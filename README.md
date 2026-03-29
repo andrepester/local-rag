@@ -140,6 +140,9 @@ make reindex
 All Go toolchain commands run inside containers via `Makefile` targets. No local Go
 installation is required.
 
+`make doctor` also starts the Compose stack, runs reindexing, and verifies that at
+least one document chunk is indexed in Chroma.
+
 ## CI checks
 
 GitHub Actions run:
