@@ -85,7 +85,7 @@ func TestRunServiceInitError(t *testing.T) {
 	})
 
 	loadConfig = func() (config.Config, error) {
-		return config.Config{Host: "127.0.0.1", Port: 8080}, nil
+		return config.Config{Host: "127.0.0.1", Port: 8765}, nil
 	}
 	newRAGService = func(*config.Config) (ragService, error) {
 		return nil, errors.New("chroma down")
@@ -111,7 +111,7 @@ func TestRunServerError(t *testing.T) {
 	})
 
 	loadConfig = func() (config.Config, error) {
-		return config.Config{Host: "127.0.0.1", Port: 8080}, nil
+		return config.Config{Host: "127.0.0.1", Port: 8765}, nil
 	}
 	newRAGService = func(*config.Config) (ragService, error) {
 		return fakeRAGService{}, nil
@@ -140,7 +140,7 @@ func TestRunServerClosedIsSuccess(t *testing.T) {
 	})
 
 	loadConfig = func() (config.Config, error) {
-		return config.Config{Host: "127.0.0.1", Port: 8080}, nil
+		return config.Config{Host: "127.0.0.1", Port: 8765}, nil
 	}
 	newRAGService = func(*config.Config) (ragService, error) {
 		return fakeRAGService{}, nil

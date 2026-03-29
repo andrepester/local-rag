@@ -34,6 +34,9 @@ func TestLoadDefaultsAndOverrides(t *testing.T) {
 	if cfg.Host != "127.0.0.1" {
 		t.Fatalf("Host = %q, want 127.0.0.1", cfg.Host)
 	}
+	if cfg.Port != 8765 {
+		t.Fatalf("Port = %d, want 8765", cfg.Port)
+	}
 }
 
 func TestLoadValidation(t *testing.T) {
@@ -65,7 +68,7 @@ func TestLoadValidation(t *testing.T) {
 		t.Fatal("expected validation error for invalid port")
 	}
 
-	t.Setenv("RAG_HTTP_PORT", "8080")
+	t.Setenv("RAG_HTTP_PORT", "8765")
 	t.Setenv("RAG_MAX_TOP_K", "0")
 	if _, err := Load(); err == nil {
 		t.Fatal("expected validation error for max top k")

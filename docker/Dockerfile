@@ -26,6 +26,6 @@ WORKDIR /app
 COPY --from=builder /out/rag-mcp /app/rag-mcp
 COPY --from=builder /out/rag-index /app/rag-index
 
-EXPOSE 8080
+EXPOSE 8765
 
 ENTRYPOINT ["/app/rag-mcp"]

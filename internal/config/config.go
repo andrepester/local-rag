@@ -42,7 +42,7 @@ func Load() (Config, error) {
 		return Config{}, fmt.Errorf("RAG_CHUNK_OVERLAP must be >= 0 and smaller than RAG_CHUNK_SIZE")
 	}
 
-	port, err := envInt("RAG_HTTP_PORT", 8080)
+	port, err := envInt("RAG_HTTP_PORT", 8765)
 	if err != nil {
 		return Config{}, err
 	}

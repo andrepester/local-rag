@@ -48,6 +48,7 @@ Compose file path: `docker/docker-compose.yml`
 - `ollama` service is included in the same Compose stack
 - Chroma persistence is managed by the `chroma_data` volume
 - Ollama persistence is managed by the `ollama_data` volume
+- Published container ports are bound to `127.0.0.1` (localhost-only)
 - Compose sets `RAG_HTTP_HOST=0.0.0.0` inside container so host port publishing still works
 
 ### One-command local install
@@ -85,7 +86,7 @@ docker compose --project-directory . -f docker/docker-compose.yml down
 | Variable | Default | Description |
 |---|---|---|
 | `RAG_HTTP_HOST` | `127.0.0.1` | HTTP bind address (local default is loopback) |
-| `RAG_HTTP_PORT` | `8080` | MCP HTTP port on host |
+| `RAG_HTTP_PORT` | `8765` | MCP HTTP port on host |
 | `HOST_DOCS_DIR` | `./data/docs` | Host path mounted as docs source |
 | `HOST_CODE_DIR` | `./data/code` | Host path mounted as code source (can be empty) |
 | `RAG_ENABLE_CODE_INGEST` | `true` | Enable/disable code ingestion |
@@ -108,7 +109,7 @@ docker compose --project-directory . -f docker/docker-compose.yml down
   "mcp": {
     "rag": {
       "type": "remote",
-      "url": "http://127.0.0.1:8080/mcp",
+      "url": "http://127.0.0.1:8765/mcp",
       "enabled": true,
       "timeout": 10000
     }

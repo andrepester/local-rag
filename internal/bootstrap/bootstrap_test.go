@@ -28,6 +28,7 @@ func TestEnsureEnvFileCreatesFromExample(t *testing.T) {
 	if string(raw) != "RAG_HTTP_PORT=9090\n" {
 		t.Fatalf("unexpected .env content: %q", string(raw))
 	}
+	assertFileMode(t, filepath.Join(repoRoot, ".env"), 0o600)
 }
 
 func TestEnsureEnvFilePreservesExisting(t *testing.T) {
@@ -85,6 +86,19 @@ func TestResolvePortFromDotEnv(t *testing.T) {
 	}
 }
 
+func TestResolvePortUsesDefaultWhenUnset(t *testing.T) {
+	t.Setenv("RAG_HTTP_PORT", "")
+	repoRoot := t.TempDir()
+
+	port, err := ResolvePort(repoRoot)
+	if err != nil {
+		t.Fatalf("ResolvePort() failed: %v", err)
+	}
+	if port != 8765 {
+		t.Fatalf("port = %d, want 8765", port)
+	}
+}
+
 func TestUpsertOpenCodeConfigCreatesFile(t *testing.T) {
 	repoRoot := t.TempDir()
 
@@ -98,6 +112,7 @@ func TestUpsertOpenCodeConfigCreatesFile(t *testing.T) {
 	if rag["url"] != "http://127.0.0.1:8088/mcp" {
 		t.Fatalf("url = %v, want http://127.0.0.1:8088/mcp", rag["url"])
 	}
+	assertFileMode(t, filepath.Join(repoRoot, "opencode.json"), 0o600)
 }
 
 func TestUpsertOpenCodeConfigPreservesExistingKeys(t *testing.T) {
@@ -113,7 +128,7 @@ func TestUpsertOpenCodeConfigPreservesExistingKeys(t *testing.T) {
 		t.Fatalf("write opencode.json: %v", err)
 	}
 
-	if err := UpsertOpenCodeConfig(repoRoot, 8080); err != nil {
+	if err := UpsertOpenCodeConfig(repoRoot, 8765); err != nil {
 		t.Fatalf("UpsertOpenCodeConfig() failed: %v", err)
 	}
 
@@ -130,9 +145,10 @@ func TestUpsertOpenCodeConfigPreservesExistingKeys(t *testing.T) {
 	if rag["enabled"] != true {
 		t.Fatalf("rag.enabled = %v, want true", rag["enabled"])
 	}
-	if rag["url"] != "http://127.0.0.1:8080/mcp" {
+	if rag["url"] != "http://127.0.0.1:8765/mcp" {
 		t.Fatalf("rag.url = %v, want updated url", rag["url"])
 	}
+	assertFileMode(t, filepath.Join(repoRoot, "opencode.json"), 0o600)
 }
 
 func TestUpsertOpenCodeConfigBacksUpInvalidJSON(t *testing.T) {
@@ -141,7 +157,7 @@ func TestUpsertOpenCodeConfigBacksUpInvalidJSON(t *testing.T) {
 		t.Fatalf("write invalid opencode.json: %v", err)
 	}
 
-	if err := UpsertOpenCodeConfig(repoRoot, 8080); err != nil {
+	if err := UpsertOpenCodeConfig(repoRoot, 8765); err != nil {
 		t.Fatalf("UpsertOpenCodeConfig() failed: %v", err)
 	}
 
@@ -163,4 +179,15 @@ func readOpenCodeConfig(t *testing.T, path string) map[string]any {
 		t.Fatalf("unmarshal %s: %v", path, err)
 	}
 	return cfg
+}
+
+func assertFileMode(t *testing.T, path string, want os.FileMode) {
+	t.Helper()
+	info, err := os.Stat(path)
+	if err != nil {
+		t.Fatalf("stat %s: %v", path, err)
+	}
+	if got := info.Mode().Perm(); got != want {
+		t.Fatalf("permissions for %s = %o, want %o", path, got, want)
+	}
 }

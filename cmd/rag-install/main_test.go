@@ -26,11 +26,24 @@ func TestRunCreatesEnvAndOpenCodeConfig(t *testing.T) {
 	if _, err := os.Stat(filepath.Join(repoRoot, ".env")); err != nil {
 		t.Fatalf("expected .env to be created: %v", err)
 	}
+	assertFileMode(t, filepath.Join(repoRoot, ".env"), 0o600)
 	raw, err := os.ReadFile(filepath.Join(repoRoot, "opencode.json"))
 	if err != nil {
 		t.Fatalf("read opencode.json: %v", err)
 	}
+	assertFileMode(t, filepath.Join(repoRoot, "opencode.json"), 0o600)
 	if !strings.Contains(string(raw), "http://127.0.0.1:8090/mcp") {
 		t.Fatalf("opencode.json did not include expected URL: %s", string(raw))
+	}
+}
+
+func assertFileMode(t *testing.T, path string, want os.FileMode) {
+	t.Helper()
+	info, err := os.Stat(path)
+	if err != nil {
+		t.Fatalf("stat %s: %v", path, err)
+	}
+	if got := info.Mode().Perm(); got != want {
+		t.Fatalf("permissions for %s = %o, want %o", path, got, want)
 	}
 }

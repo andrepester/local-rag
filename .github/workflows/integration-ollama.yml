@@ -27,7 +27,7 @@ jobs:
       - name: Wait for MCP health endpoint
         run: |
           for i in $(seq 1 30); do
-            if curl -fsS http://127.0.0.1:8080/healthz >/dev/null; then
+            if curl -fsS http://127.0.0.1:8765/healthz >/dev/null; then
               exit 0
             fi
             sleep 2
@@ -40,7 +40,7 @@ jobs:
         run: make reindex
 
       - name: Smoke check MCP endpoint
-        run: curl -fsS http://127.0.0.1:8080/healthz
+        run: curl -fsS http://127.0.0.1:8765/healthz
 
       - name: Print service logs
         if: always()

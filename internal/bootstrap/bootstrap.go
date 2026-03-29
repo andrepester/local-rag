@@ -12,7 +12,7 @@ import (
 )
 
 const (
-	defaultHTTPPort = 8080
+	defaultHTTPPort = 8765
 	envFileName     = ".env"
 	envExampleName  = ".env.example"
 	opencodeName    = "opencode.json"
@@ -30,8 +30,11 @@ func EnsureEnvFile(repoRoot string) (bool, error) {
 	if err != nil {
 		return false, fmt.Errorf("read .env.example: %w", err)
 	}
-	if err := os.WriteFile(envPath, content, 0o644); err != nil {
+	if err := os.WriteFile(envPath, content, 0o600); err != nil {
 		return false, fmt.Errorf("write .env: %w", err)
+	}
+	if err := os.Chmod(envPath, 0o600); err != nil {
+		return false, fmt.Errorf("chmod .env: %w", err)
 	}
 	return true, nil
 }
@@ -132,8 +135,11 @@ func UpsertOpenCodeConfig(repoRoot string, port int) error {
 	if err != nil {
 		return fmt.Errorf("marshal opencode config: %w", err)
 	}
-	if err := os.WriteFile(path, append(out, '\n'), 0o644); err != nil {
+	if err := os.WriteFile(path, append(out, '\n'), 0o600); err != nil {
 		return fmt.Errorf("write opencode.json: %w", err)
+	}
+	if err := os.Chmod(path, 0o600); err != nil {
+		return fmt.Errorf("chmod opencode.json: %w", err)
 	}
 	return nil
 }
