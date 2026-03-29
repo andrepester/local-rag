@@ -85,8 +85,8 @@ jobs:
           cd "${tmpdir}"
           SYFT_VERSION="1.22.0"
           SYFT_TARBALL="syft_${SYFT_VERSION}_linux_amd64.tar.gz"
-          curl -sSfL -o "${SYFT_TARBALL}" "https://github.com/anchore/syft/releases/download/v${SYFT_VERSION}/${SYFT_TARBALL}"
-          curl -sSfL -o syft_checksums.txt "https://github.com/anchore/syft/releases/download/v${SYFT_VERSION}/syft_${SYFT_VERSION}_checksums.txt"
+          curl -sSfL --retry 5 --retry-delay 2 --retry-all-errors -o "${SYFT_TARBALL}" "https://github.com/anchore/syft/releases/download/v${SYFT_VERSION}/${SYFT_TARBALL}"
+          curl -sSfL --retry 5 --retry-delay 2 --retry-all-errors -o syft_checksums.txt "https://github.com/anchore/syft/releases/download/v${SYFT_VERSION}/syft_${SYFT_VERSION}_checksums.txt"
           grep " ${SYFT_TARBALL}$" syft_checksums.txt | sha256sum --check --status
           tar -xzf "${SYFT_TARBALL}" syft
           sudo install -m 0755 syft /usr/local/bin/syft
@@ -100,8 +100,8 @@ jobs:
           cd "${tmpdir}"
           GRYPE_VERSION="0.87.0"
           GRYPE_TARBALL="grype_${GRYPE_VERSION}_linux_amd64.tar.gz"
-          curl -sSfL -o "${GRYPE_TARBALL}" "https://github.com/anchore/grype/releases/download/v${GRYPE_VERSION}/${GRYPE_TARBALL}"
-          curl -sSfL -o grype_checksums.txt "https://github.com/anchore/grype/releases/download/v${GRYPE_VERSION}/grype_${GRYPE_VERSION}_checksums.txt"
+          curl -sSfL --retry 5 --retry-delay 2 --retry-all-errors -o "${GRYPE_TARBALL}" "https://github.com/anchore/grype/releases/download/v${GRYPE_VERSION}/${GRYPE_TARBALL}"
+          curl -sSfL --retry 5 --retry-delay 2 --retry-all-errors -o grype_checksums.txt "https://github.com/anchore/grype/releases/download/v${GRYPE_VERSION}/grype_${GRYPE_VERSION}_checksums.txt"
           grep " ${GRYPE_TARBALL}$" grype_checksums.txt | sha256sum --check --status
           tar -xzf "${GRYPE_TARBALL}" grype
           sudo install -m 0755 grype /usr/local/bin/grype
