@@ -39,5 +39,8 @@ jobs:
           go build ./cmd/rag-mcp
           go build ./cmd/rag-index
 
+      - name: Run tests in Docker build stage
+        run: docker build --target test -t local-rag-test .
+
       - name: Validate Docker Compose
         run: docker compose config

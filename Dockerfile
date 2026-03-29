@@ -1,4 +1,4 @@
-FROM golang:1.25-alpine AS builder
+FROM golang:1.25-alpine AS base
 
 WORKDIR /src
 
@@ -7,6 +7,12 @@ RUN go mod download
 
 COPY cmd ./cmd
 COPY internal ./internal
+
+FROM base AS test
+
+RUN go test -count=1 ./...
+
+FROM base AS builder
 
 RUN CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -o /out/rag-mcp ./cmd/rag-mcp
 RUN CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -o /out/rag-index ./cmd/rag-index
