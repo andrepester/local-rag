@@ -1,6 +1,9 @@
 package rag
 
-import "testing"
+import (
+	"sync"
+	"testing"
+)
 
 func TestNormalizeScope(t *testing.T) {
 	tests := []struct {
@@ -24,4 +27,27 @@ func TestNormalizeScope(t *testing.T) {
 			}
 		})
 	}
+}
+
+func TestCollectionIDAccessorsAreSafe(t *testing.T) {
+	svc := &Service{}
+
+	const workers = 16
+	const iterations = 200
+
+	var wg sync.WaitGroup
+	for i := 0; i < workers; i++ {
+		wg.Add(1)
+		go func(worker int) {
+			defer wg.Done()
+			for j := 0; j < iterations; j++ {
+				svc.setCollectionID("col")
+				if got := svc.getCollectionID(); got == "" {
+					t.Errorf("getCollectionID() returned empty value")
+					return
+				}
+			}
+		}(i)
+	}
+	wg.Wait()
 }

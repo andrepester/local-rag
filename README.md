@@ -7,6 +7,7 @@ retrieval over documentation and optional code.
 - Runtime can run local, in Docker, or elsewhere on the network/cloud
 - One Docker Compose file configures docs and optional code through mounts
 - Default query scope is `all`
+- Local binary default bind is loopback (`127.0.0.1`) for safer defaults
 
 ## Architecture
 
@@ -44,6 +45,7 @@ If the MCP server is configured as `rag`, OpenCode sees these tools:
 - `HOST_DOCS_DIR` mount is required (defaults to `./docs`)
 - `HOST_CODE_DIR` mount is optional (defaults to `./.empty-code`)
 - Chroma persistence is managed by the `chroma_data` volume
+- Compose sets `RAG_HTTP_HOST=0.0.0.0` inside container so host port publishing still works
 
 ### Start service
 
@@ -69,7 +71,9 @@ docker compose down
 
 | Variable | Default | Description |
 |---|---|---|
+| `RAG_HTTP_HOST` | `127.0.0.1` | HTTP bind address (local default is loopback) |
 | `RAG_HTTP_PORT` | `8080` | MCP HTTP port on host |
+| `RAG_AUTH_TOKEN` | _(empty)_ | Optional bearer token required on `/mcp` endpoints (`Authorization: Bearer <token>`) |
 | `HOST_DOCS_DIR` | `./docs` | Host path mounted as docs source |
 | `HOST_CODE_DIR` | `./.empty-code` | Host path mounted as optional code source |
 | `RAG_ENABLE_CODE_INGEST` | `true` | Enable/disable code ingestion |
@@ -101,6 +105,9 @@ docker compose down
 
 Run the runtime however you want (Compose, Kubernetes, VM, localhost binary)
 as long as the MCP URL is reachable.
+
+If `RAG_AUTH_TOKEN` is set, clients must send `Authorization: Bearer <token>` for
+`/mcp` requests. `/healthz` remains unauthenticated.
 
 Note: `opencode.json` in this repository is local/machine-specific and ignored by git.
 

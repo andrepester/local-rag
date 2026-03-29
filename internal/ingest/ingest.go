@@ -71,7 +71,9 @@ func (s *Service) Reindex(ctx context.Context) (Stats, error) {
 	if err != nil {
 		return Stats{}, fmt.Errorf("ensure collection before reset: %w", err)
 	}
-	_ = s.Chroma.DeleteCollection(ctx, collectionID)
+	if err := s.Chroma.DeleteCollection(ctx, collectionID); err != nil && !store.IsNotFound(err) {
+		return Stats{}, fmt.Errorf("delete collection before reset: %w", err)
+	}
 
 	collectionID, err = s.Chroma.EnsureCollection(ctx, s.Config.CollectionName)
 	if err != nil {
@@ -160,16 +162,35 @@ func loadScopeDocuments(root, scope string, allowedExt map[string]struct{}) ([]d
 		return nil, fmt.Errorf("stat %s directory: %w", scope, err)
 	}
 
+	resolvedRoot, err := filepath.EvalSymlinks(root)
+	if err != nil {
+		return nil, fmt.Errorf("resolve %s root: %w", scope, err)
+	}
+
 	docs := make([]document, 0)
-	err := filepath.WalkDir(root, func(filePath string, d os.DirEntry, walkErr error) error {
+	err = filepath.WalkDir(root, func(filePath string, d os.DirEntry, walkErr error) error {
 		if walkErr != nil {
 			return walkErr
+		}
+		if d.Type()&os.ModeSymlink != 0 {
+			if d.IsDir() {
+				return filepath.SkipDir
+			}
+			return nil
 		}
 		if d.IsDir() {
 			name := d.Name()
 			if name == ".git" || name == ".venv" || name == "node_modules" || name == ".idea" || name == ".vscode" {
 				return filepath.SkipDir
 			}
+			return nil
+		}
+
+		resolvedFilePath, err := filepath.EvalSymlinks(filePath)
+		if err != nil {
+			return fmt.Errorf("resolve path %s: %w", filePath, err)
+		}
+		if !resolvedPathWithinRoot(resolvedRoot, resolvedFilePath) {
 			return nil
 		}
 
@@ -203,6 +224,18 @@ func loadScopeDocuments(root, scope string, allowedExt map[string]struct{}) ([]d
 	}
 
 	return docs, nil
+}
+
+func resolvedPathWithinRoot(rootResolvedPath, fileResolvedPath string) bool {
+	rel, err := filepath.Rel(rootResolvedPath, fileResolvedPath)
+	if err != nil {
+		return false
+	}
+	rel = filepath.Clean(rel)
+	if rel == "." {
+		return true
+	}
+	return rel != ".." && !strings.HasPrefix(rel, ".."+string(filepath.Separator))
 }
 
 func readText(filePath, ext string) (string, error) {

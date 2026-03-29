@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"log"
 	"net/http"
+	"strings"
 	"time"
 
 	"github.com/modelcontextprotocol/go-sdk/mcp"
@@ -15,6 +16,15 @@ import (
 	"local-rag/internal/ollama"
 	"local-rag/internal/rag"
 	"local-rag/internal/store"
+)
+
+const (
+	defaultReadTimeout       = 15 * time.Second
+	defaultWriteTimeout      = 60 * time.Second
+	defaultIdleTimeout       = 120 * time.Second
+	defaultMaxHeaderBytes    = 1 << 20 // 1 MiB
+	defaultMaxMCPBodyBytes   = 2 << 20 // 2 MiB
+	defaultReadHeaderTimeout = 5 * time.Second
 )
 
 type searchInput struct {
@@ -111,10 +121,11 @@ func main() {
 	handler := mcp.NewStreamableHTTPHandler(func(*http.Request) *mcp.Server {
 		return server
 	}, nil)
+	mcpHandler := wrapMCPHandler(handler, cfg.AuthToken, defaultMaxMCPBodyBytes)
 
 	mux := http.NewServeMux()
-	mux.Handle("/mcp", handler)
-	mux.Handle("/mcp/", handler)
+	mux.Handle("/mcp", mcpHandler)
+	mux.Handle("/mcp/", mcpHandler)
 	mux.HandleFunc("/healthz", func(w http.ResponseWriter, _ *http.Request) {
 		w.WriteHeader(http.StatusOK)
 		_, _ = w.Write([]byte("ok"))
@@ -126,10 +137,69 @@ func main() {
 	httpServer := &http.Server{
 		Addr:              addr,
 		Handler:           mux,
-		ReadHeaderTimeout: 5 * time.Second,
+		ReadTimeout:       defaultReadTimeout,
+		WriteTimeout:      defaultWriteTimeout,
+		IdleTimeout:       defaultIdleTimeout,
+		ReadHeaderTimeout: defaultReadHeaderTimeout,
+		MaxHeaderBytes:    defaultMaxHeaderBytes,
 	}
 
 	if err := httpServer.ListenAndServe(); err != nil && !errors.Is(err, http.ErrServerClosed) {
 		log.Fatalf("http server failed: %v", err)
 	}
+}
+
+func wrapMCPHandler(next http.Handler, authToken string, maxBodyBytes int64) http.Handler {
+	h := limitRequestBodyMiddleware(maxBodyBytes, next)
+	h = bearerAuthMiddleware(authToken, h)
+	return h
+}
+
+func bearerAuthMiddleware(authToken string, next http.Handler) http.Handler {
+	if strings.TrimSpace(authToken) == "" {
+		return next
+	}
+
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Path == "/healthz" {
+			next.ServeHTTP(w, r)
+			return
+		}
+
+		token, ok := parseBearerToken(r.Header.Get("Authorization"))
+		if !ok || token != authToken {
+			w.Header().Set("WWW-Authenticate", `Bearer realm="rag-mcp"`)
+			http.Error(w, "unauthorized", http.StatusUnauthorized)
+			return
+		}
+
+		next.ServeHTTP(w, r)
+	})
+}
+
+func parseBearerToken(authorizationHeader string) (string, bool) {
+	parts := strings.Fields(strings.TrimSpace(authorizationHeader))
+	if len(parts) != 2 || !strings.EqualFold(parts[0], "Bearer") {
+		return "", false
+	}
+	if strings.TrimSpace(parts[1]) == "" {
+		return "", false
+	}
+	return parts[1], true
+}
+
+func limitRequestBodyMiddleware(maxBodyBytes int64, next http.Handler) http.Handler {
+	if maxBodyBytes <= 0 {
+		return next
+	}
+
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.ContentLength > maxBodyBytes {
+			http.Error(w, "request body too large", http.StatusRequestEntityTooLarge)
+			return
+		}
+
+		r.Body = http.MaxBytesReader(w, r.Body, maxBodyBytes)
+		next.ServeHTTP(w, r)
+	})
 }

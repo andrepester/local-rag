@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"strings"
+	"sync"
 
 	"local-rag/internal/config"
 	"local-rag/internal/ingest"
@@ -16,7 +17,8 @@ type Service struct {
 	Ingest       *ingest.Service
 	Ollama       *ollama.Client
 	Chroma       *store.ChromaClient
-	CollectionID string
+	collectionMu sync.RWMutex
+	collectionID string
 }
 
 type SearchMatch struct {
@@ -60,7 +62,7 @@ func NewService(cfg *config.Config, ingestSvc *ingest.Service, ollamaClient *oll
 		Ingest:       ingestSvc,
 		Ollama:       ollamaClient,
 		Chroma:       chromaClient,
-		CollectionID: collectionID,
+		collectionID: collectionID,
 	}, nil
 }
 
@@ -73,7 +75,7 @@ func (s *Service) Reindex(ctx context.Context) (ingest.Stats, error) {
 	if err != nil {
 		return stats, err
 	}
-	s.CollectionID = collectionID
+	s.setCollectionID(collectionID)
 	return stats, nil
 }
 
@@ -104,7 +106,7 @@ func (s *Service) Search(ctx context.Context, query string, topK int, scope stri
 		where["scope"] = scopeUsed
 	}
 
-	candidates, err := s.Chroma.Query(ctx, s.CollectionID, embeddings[0], min(topK*8, max(20, s.Config.MaxTopK)), where)
+	candidates, err := s.Chroma.Query(ctx, s.getCollectionID(), embeddings[0], min(topK*8, max(20, s.Config.MaxTopK)), where)
 	if err != nil {
 		return SearchResponse{}, err
 	}
@@ -156,7 +158,7 @@ func (s *Service) GetChunk(ctx context.Context, chunkID string) ChunkResponse {
 		return ChunkResponse{Found: false, ChunkID: chunkID, Error: "chunk_id is required"}
 	}
 
-	match, err := s.Chroma.GetByID(ctx, s.CollectionID, chunkID)
+	match, err := s.Chroma.GetByID(ctx, s.getCollectionID(), chunkID)
 	if err != nil {
 		return ChunkResponse{Found: false, ChunkID: chunkID, Error: err.Error()}
 	}
@@ -190,7 +192,7 @@ func (s *Service) GetChunk(ctx context.Context, chunkID string) ChunkResponse {
 
 func (s *Service) ListSources(ctx context.Context, scope string) (ListSourcesResponse, error) {
 	scopeUsed := normalizeScope(scope, s.Config.DefaultScope)
-	sources, err := s.Chroma.ListSourcePaths(ctx, s.CollectionID, scopeUsed)
+	sources, err := s.Chroma.ListSourcePaths(ctx, s.getCollectionID(), scopeUsed)
 	if err != nil {
 		return ListSourcesResponse{}, err
 	}
@@ -220,4 +222,16 @@ func max(a, b int) int {
 		return a
 	}
 	return b
+}
+
+func (s *Service) getCollectionID() string {
+	s.collectionMu.RLock()
+	defer s.collectionMu.RUnlock()
+	return s.collectionID
+}
+
+func (s *Service) setCollectionID(collectionID string) {
+	s.collectionMu.Lock()
+	defer s.collectionMu.Unlock()
+	s.collectionID = collectionID
 }

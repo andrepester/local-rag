@@ -13,6 +13,7 @@ func TestLoadDefaultsAndOverrides(t *testing.T) {
 	t.Setenv("RAG_CHUNK_SIZE", "500")
 	t.Setenv("RAG_CHUNK_OVERLAP", "50")
 	t.Setenv("RAG_ENABLE_CODE_INGEST", "false")
+	t.Setenv("RAG_AUTH_TOKEN", "secret-token")
 
 	cfg, err := Load()
 	if err != nil {
@@ -30,6 +31,12 @@ func TestLoadDefaultsAndOverrides(t *testing.T) {
 	}
 	if !filepath.IsAbs(cfg.DocsDir) || !filepath.IsAbs(cfg.CodeDir) {
 		t.Fatal("expected absolute docs/code paths")
+	}
+	if cfg.Host != "127.0.0.1" {
+		t.Fatalf("Host = %q, want 127.0.0.1", cfg.Host)
+	}
+	if cfg.AuthToken != "secret-token" {
+		t.Fatalf("AuthToken = %q, want secret-token", cfg.AuthToken)
 	}
 }
 

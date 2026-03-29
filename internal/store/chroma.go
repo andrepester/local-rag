@@ -8,6 +8,7 @@ import (
 	"net/http"
 	"net/url"
 	"path"
+	"sort"
 	"strings"
 	"time"
 )
@@ -212,7 +213,7 @@ func (c *ChromaClient) ListSourcePaths(ctx context.Context, collectionID string,
 	for source := range all {
 		out = append(out, source)
 	}
-	sortStrings(out)
+	sort.Strings(out)
 	return out, nil
 }
 
@@ -285,15 +286,6 @@ func isNotFound(err error) bool {
 	return ok && h.StatusCode == http.StatusNotFound
 }
 
-func sortStrings(values []string) {
-	if len(values) < 2 {
-		return
-	}
-	for i := 0; i < len(values)-1; i++ {
-		for j := i + 1; j < len(values); j++ {
-			if values[j] < values[i] {
-				values[i], values[j] = values[j], values[i]
-			}
-		}
-	}
+func IsNotFound(err error) bool {
+	return isNotFound(err)
 }
