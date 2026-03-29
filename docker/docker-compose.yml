@@ -4,10 +4,8 @@ services:
     restart: unless-stopped
     healthcheck:
       test:
-        - CMD
-        - python
-        - -c
-        - import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/api/v2/heartbeat', timeout=2)
+        - CMD-SHELL
+        - timeout 2 bash -c '</dev/tcp/127.0.0.1/8000'
       interval: 5s
       timeout: 3s
       retries: 20
@@ -18,7 +16,7 @@ services:
   rag-mcp:
     build:
       context: .
-      dockerfile: Dockerfile
+      dockerfile: docker/Dockerfile
     restart: unless-stopped
     depends_on:
       chroma:

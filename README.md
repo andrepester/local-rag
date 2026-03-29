@@ -40,7 +40,7 @@ If the MCP server is configured as `rag`, OpenCode sees these tools:
 
 ## Docker Compose (single file)
 
-`docker-compose.yml` is the only compose file.
+Compose file path: `docker/docker-compose.yml`
 
 - `HOST_DOCS_DIR` mount is required (defaults to `./docs`)
 - `HOST_CODE_DIR` mount is optional (defaults to `./.empty-code`)
@@ -50,13 +50,13 @@ If the MCP server is configured as `rag`, OpenCode sees these tools:
 ### Start service
 
 ```bash
-docker compose up -d --build
+docker compose --project-directory . -f docker/docker-compose.yml up -d --build
 ```
 
 ### Reindex mounted data
 
 ```bash
-docker compose run --rm --entrypoint /app/rag-index rag-mcp
+docker compose --project-directory . -f docker/docker-compose.yml run --rm --entrypoint /app/rag-index rag-mcp
 ```
 
 You can also trigger reindexing from OpenCode via `rag_reindex`.
@@ -64,7 +64,7 @@ You can also trigger reindexing from OpenCode via `rag_reindex`.
 ### Stop service
 
 ```bash
-docker compose down
+docker compose --project-directory . -f docker/docker-compose.yml down
 ```
 
 ## Environment variables
@@ -147,7 +147,7 @@ least one document chunk is indexed in Chroma.
 
 GitHub Actions run:
 
-- `ci-fast`: `gofmt` verification, `go vet`, `go test`, `go build`, `docker compose config`
+- `ci-fast`: `gofmt` verification, `go vet`, containerized `go test` with coverage gate, `go build`, `docker compose config`
 - `security-baseline`: gitleaks + `govulncheck`
 - `integration-ollama`: Ollama container + Compose stack + reindex smoke test
 - `supply-chain`: CycloneDX SBOM artifacts, license allowlist gate, Syft + Grype filesystem and image CVE scans

@@ -6,6 +6,7 @@ GO_IMAGE ?= golang:1.25-alpine
 GO_BIN ?= /usr/local/go/bin/go
 GO_RUN = docker run --rm -u "$$(id -u):$$(id -g)" -e HOME=/tmp -v "$(PWD):/workspace" -w /workspace $(GO_IMAGE)
 COVERAGE_MIN ?= 60
+COMPOSE = docker compose --project-directory . -f docker/docker-compose.yml
 
 help:
 	@printf '%s\n' 'Available targets:'
@@ -26,7 +27,7 @@ doctor: test build compose-validate doctor-index
 doctor-index: run reindex doctor-verify-index
 
 doctor-verify-index:
-	docker compose exec -T rag-mcp sh -lc 'set -eu; tenant="$${RAG_CHROMA_TENANT:-default_tenant}"; database="$${RAG_CHROMA_DATABASE:-default_database}"; collection="$${RAG_COLLECTION_NAME:-rag}"; base="http://chroma:8000/api/v2/tenants/$$tenant/databases/$$database"; col_payload="$$(printf "{\"name\":\"%s\",\"get_or_create\":true,\"metadata\":{\"hnsw:space\":\"cosine\"}}" "$$collection")"; col="$$(printf "%s" "$$col_payload" | wget -qO- --header "Content-Type: application/json" --post-file=- "$$base/collections")"; cid="$$(printf "%s" "$$col" | sed -n "s/.*\"id\":\"\([^\"]*\)\".*/\1/p")"; test -n "$$cid"; get="$$(printf "%s" "{\"limit\":1,\"offset\":0,\"include\":[\"metadatas\"]}" | wget -qO- --header "Content-Type: application/json" --post-file=- "$$base/collections/$$cid/get")"; printf "%s" "$$get" | grep -Eq "\"ids\":\[[^]]*\"[^\"]+\"" && echo "doctor: indexed data present in Chroma"'
+	$(COMPOSE) exec -T rag-mcp sh -lc 'set -eu; tenant="$${RAG_CHROMA_TENANT:-default_tenant}"; database="$${RAG_CHROMA_DATABASE:-default_database}"; collection="$${RAG_COLLECTION_NAME:-rag}"; base="http://chroma:8000/api/v2/tenants/$$tenant/databases/$$database"; col_payload="$$(printf "{\"name\":\"%s\",\"get_or_create\":true,\"metadata\":{\"hnsw:space\":\"cosine\"}}" "$$collection")"; col="$$(printf "%s" "$$col_payload" | wget -qO- --header "Content-Type: application/json" --post-file=- "$$base/collections")"; cid="$$(printf "%s" "$$col" | sed -n "s/.*\"id\":\"\([^\"]*\)\".*/\1/p")"; test -n "$$cid"; get="$$(printf "%s" "{\"limit\":1,\"offset\":0,\"include\":[\"metadatas\"]}" | wget -qO- --header "Content-Type: application/json" --post-file=- "$$base/collections/$$cid/get")"; printf "%s" "$$get" | grep -Eq "\"ids\":\[[^]]*\"[^\"]+\"" && echo "doctor: indexed data present in Chroma"'
 
 mod:
 	$(GO_RUN) $(GO_BIN) mod tidy
@@ -41,19 +42,19 @@ build:
 	$(GO_RUN) sh -lc '$(GO_BIN) build ./cmd/rag-mcp && $(GO_BIN) build ./cmd/rag-index'
 
 run:
-	docker compose up -d --build
+	$(COMPOSE) up -d --build
 
 reindex:
-	docker compose run --rm --entrypoint /app/rag-index rag-mcp
+	$(COMPOSE) run --rm --entrypoint /app/rag-index rag-mcp
 
 compose-up:
-	docker compose up -d --build
+	$(COMPOSE) up -d --build
 
 compose-down:
-	docker compose down
+	$(COMPOSE) down
 
 compose-logs:
-	docker compose logs -f
+	$(COMPOSE) logs -f
 
 compose-validate:
-	docker compose config
+	$(COMPOSE) config

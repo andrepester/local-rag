@@ -108,7 +108,7 @@ jobs:
           grype version
 
       - name: Build runtime image
-        run: docker build -t local-rag-scan:ci .
+        run: docker build -f docker/Dockerfile -t local-rag-scan:ci .
 
       - name: Generate filesystem SBOM (Syft)
         run: syft dir:. -o cyclonedx-json=sbom-fs.cdx.json

@@ -43,7 +43,7 @@ jobs:
           OLLAMA_HOST: http://host.docker.internal:11434
           HOST_DOCS_DIR: ./docs
           HOST_CODE_DIR: ./.empty-code
-        run: docker compose up -d --build
+        run: docker compose --project-directory . -f docker/docker-compose.yml up -d --build
 
       - name: Wait for MCP health endpoint
         run: |
@@ -54,21 +54,21 @@ jobs:
             sleep 2
           done
           echo "MCP health endpoint not ready" >&2
-          docker compose logs rag-mcp >&2 || true
+          docker compose --project-directory . -f docker/docker-compose.yml logs rag-mcp >&2 || true
           exit 1
 
       - name: Reindex mounted sources
         env:
           OLLAMA_HOST: http://host.docker.internal:11434
-        run: docker compose run --rm --entrypoint /app/rag-index rag-mcp
+        run: docker compose --project-directory . -f docker/docker-compose.yml run --rm --entrypoint /app/rag-index rag-mcp
 
       - name: Smoke check MCP endpoint
         run: curl -fsS http://127.0.0.1:8080/healthz
 
       - name: Print service logs
         if: always()
-        run: docker compose logs --no-color
+        run: docker compose --project-directory . -f docker/docker-compose.yml logs --no-color
 
       - name: Shutdown stack
         if: always()
-        run: docker compose down -v
+        run: docker compose --project-directory . -f docker/docker-compose.yml down -v
