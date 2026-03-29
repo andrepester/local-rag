@@ -28,7 +28,7 @@ jobs:
         run: go install github.com/CycloneDX/cyclonedx-gomod/cmd/cyclonedx-gomod@v1.9.0
 
       - name: Generate Go SBOM (CycloneDX)
-        run: cyclonedx-gomod app -json -licenses -output sbom-go.cdx.json
+        run: cyclonedx-gomod mod -json -licenses -output sbom-go.cdx.json
 
       - name: Upload SBOM artifact
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
@@ -80,6 +80,9 @@ jobs:
       - name: Install Syft
         run: |
           set -euo pipefail
+          tmpdir=$(mktemp -d)
+          trap 'rm -rf "${tmpdir}"' EXIT
+          cd "${tmpdir}"
           SYFT_VERSION="1.22.0"
           SYFT_TARBALL="syft_${SYFT_VERSION}_linux_amd64.tar.gz"
           curl -sSfL -o "${SYFT_TARBALL}" "https://github.com/anchore/syft/releases/download/v${SYFT_VERSION}/${SYFT_TARBALL}"
@@ -92,6 +95,9 @@ jobs:
       - name: Install Grype
         run: |
           set -euo pipefail
+          tmpdir=$(mktemp -d)
+          trap 'rm -rf "${tmpdir}"' EXIT
+          cd "${tmpdir}"
           GRYPE_VERSION="0.87.0"
           GRYPE_TARBALL="grype_${GRYPE_VERSION}_linux_amd64.tar.gz"
           curl -sSfL -o "${GRYPE_TARBALL}" "https://github.com/anchore/grype/releases/download/v${GRYPE_VERSION}/${GRYPE_TARBALL}"
