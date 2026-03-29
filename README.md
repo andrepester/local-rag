@@ -118,26 +118,29 @@ Note: `opencode.json` in this repository is local/machine-specific and ignored b
 - `Use rag_search with scope all and summarize architecture from docs and code.`
 - `Call rag_list_sources with scope all.`
 
-## Local Go development
+## Local development (container-first)
 
 ```bash
-go mod tidy
-go test ./...
-go build ./cmd/rag-mcp
-go build ./cmd/rag-index
+make mod
+make test
+make build
+make doctor
 ```
 
-Start local service:
+Start service:
 
 ```bash
-go run ./cmd/rag-mcp
+make run
 ```
 
-Run local reindex:
+Run reindex:
 
 ```bash
-go run ./cmd/rag-index
+make reindex
 ```
+
+All Go toolchain commands run inside containers via `Makefile` targets. No local Go
+installation is required.
 
 ## CI checks
 

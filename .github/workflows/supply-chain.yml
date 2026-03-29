@@ -31,7 +31,7 @@ jobs:
         run: cyclonedx-gomod mod -json -licenses -output sbom-go.cdx.json
 
       - name: Upload SBOM artifact
-        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        uses: actions/upload-artifact@330a01c490aca151604b8cf639adc76d48f6c5d4 # v5
         with:
           name: sbom-go-cyclonedx
           path: sbom-go.cdx.json
@@ -66,7 +66,7 @@ jobs:
           fi
 
       - name: Upload license report artifact
-        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        uses: actions/upload-artifact@330a01c490aca151604b8cf639adc76d48f6c5d4 # v5
         with:
           name: go-licenses-report
           path: licenses.csv
@@ -114,7 +114,7 @@ jobs:
         run: syft dir:. -o cyclonedx-json=sbom-fs.cdx.json
 
       - name: Upload filesystem SBOM artifact
-        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        uses: actions/upload-artifact@330a01c490aca151604b8cf639adc76d48f6c5d4 # v5
         with:
           name: sbom-fs-cyclonedx
           path: sbom-fs.cdx.json
@@ -124,7 +124,7 @@ jobs:
 
       - name: Upload filesystem SARIF
         if: always()
-        uses: github/codeql-action/upload-sarif@5c8a8a642e79153f5d047b10ec1cba1d1cc65699 # v3
+        uses: github/codeql-action/upload-sarif@c10b8064de6f491fea524254123dbe5e09572f13 # v4
         with:
           sarif_file: grype-fs.sarif
 
@@ -132,7 +132,7 @@ jobs:
         run: syft local-rag-scan:ci -o cyclonedx-json=sbom-image.cdx.json
 
       - name: Upload image SBOM artifact
-        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        uses: actions/upload-artifact@330a01c490aca151604b8cf639adc76d48f6c5d4 # v5
         with:
           name: sbom-image-cyclonedx
           path: sbom-image.cdx.json
