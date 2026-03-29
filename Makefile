@@ -14,7 +14,7 @@ help:
 	@printf '  %-20s %s\n' 'make mod' 'Download and tidy Go modules'
 	@printf '  %-20s %s\n' 'make test' 'Run Go tests in a Go container'
 	@printf '  %-20s %s\n' 'make test-cover' 'Run Go tests with coverage gate in container'
-	@printf '  %-20s %s\n' 'make build' 'Build rag binaries in a Go container'
+	@printf '  %-20s %s\n' 'make build' 'Run containerized Go compile check (no binaries)'
 	@printf '  %-20s %s\n' 'make run' 'Run MCP server via Docker Compose'
 	@printf '  %-20s %s\n' 'make reindex' 'Run index build in the service container'
 	@printf '  %-20s %s\n' 'make compose-up' 'Start compose stack'
@@ -39,7 +39,7 @@ test-cover:
 	$(GO_RUN) sh -lc "set -eu; $(GO_BIN) test -count=1 -covermode=atomic -coverprofile=coverage.out ./...; $(GO_BIN) tool cover -func=coverage.out | tee coverage.txt; awk -v min=\"$(COVERAGE_MIN)\" '/^total:/ { gsub(/%/, \"\", \$$3); if ((\$$3 + 0) < (min + 0)) { printf(\"coverage %.1f%% is below minimum %.1f%%\\n\", \$$3, min); exit 1 }; found=1 } END { if (!found) { print \"coverage total not found\"; exit 1 } }' coverage.txt"
 
 build:
-	$(GO_RUN) sh -lc '$(GO_BIN) build ./cmd/rag-mcp && $(GO_BIN) build ./cmd/rag-index'
+	$(GO_RUN) $(GO_BIN) build ./...
 
 run:
 	$(COMPOSE) up -d --build

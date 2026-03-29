@@ -123,6 +123,9 @@ make build
 make doctor
 ```
 
+`make build` performs a containerized compile check (`go build ./...`) and does not
+write local binaries.
+
 Start service:
 
 ```bash
