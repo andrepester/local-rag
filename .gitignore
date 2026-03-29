@@ -20,6 +20,11 @@ coverage.out
 /rag-index
 
 # Private local docs (keep test file tracked)
-docs/**
-!docs/
-!docs/rag-test.md
+data/docs/**
+!data/docs/
+!data/docs/rag-test.md
+
+# Local code mount content (keep directory placeholder tracked)
+data/code/**
+!data/code/
+!data/code/.gitkeep

@@ -71,11 +71,11 @@ func Load() (Config, error) {
 		return Config{}, fmt.Errorf("RAG_SCOPE_DEFAULT must be one of all, docs, code")
 	}
 
-	docsDir, err := filepath.Abs(env("RAG_DOCS_DIR", "./docs"))
+	docsDir, err := filepath.Abs(env("RAG_DOCS_DIR", "./data/docs"))
 	if err != nil {
 		return Config{}, fmt.Errorf("failed to resolve RAG_DOCS_DIR: %w", err)
 	}
-	codeDir, err := filepath.Abs(env("RAG_CODE_DIR", "./.empty-code"))
+	codeDir, err := filepath.Abs(env("RAG_CODE_DIR", "./data/code"))
 	if err != nil {
 		return Config{}, fmt.Errorf("failed to resolve RAG_CODE_DIR: %w", err)
 	}

@@ -42,8 +42,8 @@ services:
     extra_hosts:
       - "host.docker.internal:host-gateway"
     volumes:
-      - ${HOST_DOCS_DIR:-./docs}:/data/docs:ro
-      - ${HOST_CODE_DIR:-./.empty-code}:/data/code:ro
+      - ${HOST_DOCS_DIR:-./data/docs}:/data/docs:ro
+      - ${HOST_CODE_DIR:-./data/code}:/data/code:ro
 
 volumes:
   chroma_data:

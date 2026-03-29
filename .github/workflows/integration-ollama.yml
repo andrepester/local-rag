@@ -41,8 +41,8 @@ jobs:
       - name: Start MCP stack
         env:
           OLLAMA_HOST: http://host.docker.internal:11434
-          HOST_DOCS_DIR: ./docs
-          HOST_CODE_DIR: ./.empty-code
+          HOST_DOCS_DIR: ./data/docs
+          HOST_CODE_DIR: ./data/code
         run: docker compose --project-directory . -f docker/docker-compose.yml up -d --build
 
       - name: Wait for MCP health endpoint

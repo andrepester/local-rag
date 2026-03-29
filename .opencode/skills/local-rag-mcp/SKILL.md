@@ -5,7 +5,7 @@ retrieval evidence before answering.
 
 ## When to use it
 
-- Questions about content stored in mounted `docs/` and optional `code/`
+- Questions about content stored in mounted `data/docs/` and `data/code/`
 - Requests to search or summarize indexed repository material
 - Requests to cite or inspect retrieved chunks before answering
 

@@ -7,8 +7,8 @@ import (
 )
 
 func TestLoadDefaultsAndOverrides(t *testing.T) {
-	t.Setenv("RAG_DOCS_DIR", "./docs")
-	t.Setenv("RAG_CODE_DIR", "./.empty-code")
+	t.Setenv("RAG_DOCS_DIR", "./data/docs")
+	t.Setenv("RAG_CODE_DIR", "./data/code")
 	t.Setenv("RAG_SCOPE_DEFAULT", "all")
 	t.Setenv("RAG_CHUNK_SIZE", "500")
 	t.Setenv("RAG_CHUNK_OVERLAP", "50")

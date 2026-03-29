@@ -96,7 +96,7 @@ func newMCPHandler(ragSvc ragService) http.Handler {
 
 	mcp.AddTool(server, &mcp.Tool{
 		Name:        "search",
-		Description: "Semantic search over indexed docs and optional code (default scope=all)",
+		Description: "Semantic search over indexed docs and code (default scope=all)",
 	}, func(ctx context.Context, _ *mcp.CallToolRequest, input *searchInput) (*mcp.CallToolResult, any, error) {
 		if input == nil {
 			return nil, nil, errors.New("input is required")
@@ -136,7 +136,7 @@ func newMCPHandler(ragSvc ragService) http.Handler {
 
 	mcp.AddTool(server, &mcp.Tool{
 		Name:        "reindex",
-		Description: "Rebuild the index from docs and optional code sources",
+		Description: "Rebuild the index from docs and code sources",
 	}, func(ctx context.Context, _ *mcp.CallToolRequest, _ *struct{}) (*mcp.CallToolResult, any, error) {
 		stats, err := ragSvc.Reindex(ctx)
 		if err != nil {

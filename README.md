@@ -1,11 +1,11 @@
 # RAG MCP Service (Go + Chroma + Ollama)
 
 This repository provides a Go-first MCP service named `rag` for semantic
-retrieval over documentation and optional code.
+retrieval over documentation and code.
 
 - OpenCode connects via remote MCP (`type: "remote"`)
 - Runtime can run local, in Docker, or elsewhere on the network/cloud
-- One Docker Compose file configures docs and optional code through mounts
+- One Docker Compose file configures docs and code through mounts
 - Default query scope is `all`
 - Local binary default bind is loopback (`127.0.0.1`) for safer defaults
 
@@ -13,8 +13,8 @@ retrieval over documentation and optional code.
 
 ```mermaid
 flowchart TD
-    A["Mounted docs/"] --> B["rag-index"]
-    C["Mounted code/ (optional)"] --> B
+    A["Mounted data/docs/"] --> B["rag-index"]
+    C["Mounted data/code/ (can be empty)"] --> B
     B --> D["Ollama embeddings"]
     D --> E["Chroma collection: rag"]
 
@@ -33,17 +33,17 @@ If the MCP server is configured as `rag`, OpenCode sees these tools:
 
 ## Scope behavior
 
-- `scope=all` (default): searches docs and optional code
+- `scope=all` (default): searches docs and code
 - `scope=docs`: searches docs only
 - `scope=code`: searches code only
-- If no code is mounted/indexed, `scope=all` behaves like docs-only
+- If `data/code` is empty (or code ingest is disabled), `scope=all` behaves like docs-only
 
 ## Docker Compose (single file)
 
 Compose file path: `docker/docker-compose.yml`
 
-- `HOST_DOCS_DIR` mount is required (defaults to `./docs`)
-- `HOST_CODE_DIR` mount is optional (defaults to `./.empty-code`)
+- `HOST_DOCS_DIR` mount is required (defaults to `./data/docs`)
+- `HOST_CODE_DIR` mount is required (defaults to `./data/code`, can be empty)
 - Chroma persistence is managed by the `chroma_data` volume
 - Compose sets `RAG_HTTP_HOST=0.0.0.0` inside container so host port publishing still works
 
@@ -73,8 +73,8 @@ docker compose --project-directory . -f docker/docker-compose.yml down
 |---|---|---|
 | `RAG_HTTP_HOST` | `127.0.0.1` | HTTP bind address (local default is loopback) |
 | `RAG_HTTP_PORT` | `8080` | MCP HTTP port on host |
-| `HOST_DOCS_DIR` | `./docs` | Host path mounted as docs source |
-| `HOST_CODE_DIR` | `./.empty-code` | Host path mounted as optional code source |
+| `HOST_DOCS_DIR` | `./data/docs` | Host path mounted as docs source |
+| `HOST_CODE_DIR` | `./data/code` | Host path mounted as code source (can be empty) |
 | `RAG_ENABLE_CODE_INGEST` | `true` | Enable/disable code ingestion |
 | `OLLAMA_HOST` | `http://host.docker.internal:11434` | Embedding endpoint |
 | `EMBED_MODEL` | `nomic-embed-text` | Embedding model name |
