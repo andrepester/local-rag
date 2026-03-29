@@ -27,13 +27,40 @@ type Config struct {
 }
 
 func Load() (Config, error) {
-	chunkSize := envInt("RAG_CHUNK_SIZE", 1200)
-	chunkOverlap := envInt("RAG_CHUNK_OVERLAP", 200)
+	chunkSize, err := envInt("RAG_CHUNK_SIZE", 1200)
+	if err != nil {
+		return Config{}, err
+	}
+	chunkOverlap, err := envInt("RAG_CHUNK_OVERLAP", 200)
+	if err != nil {
+		return Config{}, err
+	}
 	if chunkSize <= 0 {
 		return Config{}, fmt.Errorf("RAG_CHUNK_SIZE must be > 0")
 	}
 	if chunkOverlap < 0 || chunkOverlap >= chunkSize {
 		return Config{}, fmt.Errorf("RAG_CHUNK_OVERLAP must be >= 0 and smaller than RAG_CHUNK_SIZE")
+	}
+
+	port, err := envInt("RAG_HTTP_PORT", 8080)
+	if err != nil {
+		return Config{}, err
+	}
+	if port < 1 || port > 65535 {
+		return Config{}, fmt.Errorf("RAG_HTTP_PORT must be between 1 and 65535")
+	}
+
+	maxTopK, err := envInt("RAG_MAX_TOP_K", 50)
+	if err != nil {
+		return Config{}, err
+	}
+	if maxTopK <= 0 {
+		return Config{}, fmt.Errorf("RAG_MAX_TOP_K must be > 0")
+	}
+
+	enableCodeIngest, err := envBool("RAG_ENABLE_CODE_INGEST", true)
+	if err != nil {
+		return Config{}, err
 	}
 
 	defaultScope := strings.ToLower(strings.TrimSpace(env("RAG_SCOPE_DEFAULT", "all")))
@@ -55,7 +82,7 @@ func Load() (Config, error) {
 
 	cfg := Config{
 		Host:             env("RAG_HTTP_HOST", "127.0.0.1"),
-		Port:             envInt("RAG_HTTP_PORT", 8080),
+		Port:             port,
 		DocsDir:          docsDir,
 		CodeDir:          codeDir,
 		ChromaURL:        strings.TrimRight(env("RAG_CHROMA_URL", "http://chroma:8000"), "/"),
@@ -67,12 +94,8 @@ func Load() (Config, error) {
 		ChunkSize:        chunkSize,
 		ChunkOverlap:     chunkOverlap,
 		DefaultScope:     defaultScope,
-		MaxTopK:          envInt("RAG_MAX_TOP_K", 50),
-		EnableCodeIngest: envBool("RAG_ENABLE_CODE_INGEST", true),
-	}
-
-	if cfg.MaxTopK <= 0 {
-		cfg.MaxTopK = 50
+		MaxTopK:          maxTopK,
+		EnableCodeIngest: enableCodeIngest,
 	}
 
 	return cfg, nil
@@ -85,29 +108,29 @@ func env(key, fallback string) string {
 	return fallback
 }
 
-func envInt(key string, fallback int) int {
+func envInt(key string, fallback int) (int, error) {
 	raw, ok := os.LookupEnv(key)
 	if !ok || strings.TrimSpace(raw) == "" {
-		return fallback
+		return fallback, nil
 	}
 	value, err := strconv.Atoi(strings.TrimSpace(raw))
 	if err != nil {
-		return fallback
+		return 0, fmt.Errorf("%s must be an integer", key)
 	}
-	return value
+	return value, nil
 }
 
-func envBool(key string, fallback bool) bool {
+func envBool(key string, fallback bool) (bool, error) {
 	raw, ok := os.LookupEnv(key)
 	if !ok || strings.TrimSpace(raw) == "" {
-		return fallback
+		return fallback, nil
 	}
 	switch strings.ToLower(strings.TrimSpace(raw)) {
 	case "1", "true", "yes", "on":
-		return true
+		return true, nil
 	case "0", "false", "no", "off":
-		return false
+		return false, nil
 	default:
-		return fallback
+		return false, fmt.Errorf("%s must be a boolean", key)
 	}
 }

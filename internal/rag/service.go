@@ -2,9 +2,11 @@ package rag
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"strings"
 	"sync"
+	"time"
 
 	"local-rag/internal/config"
 	"local-rag/internal/ingest"
@@ -50,11 +52,21 @@ type ChunkResponse struct {
 	Meta    map[string]any `json:"metadata,omitempty"`
 }
 
+const (
+	collectionInitTimeout    = 45 * time.Second
+	collectionInitMinBackoff = 250 * time.Millisecond
+	collectionInitMaxBackoff = 3 * time.Second
+)
+
 func NewService(cfg *config.Config, ingestSvc *ingest.Service, ollamaClient *ollama.Client, chromaClient *store.ChromaClient) (*Service, error) {
-	ctx := context.Background()
-	collectionID, err := chromaClient.EnsureCollection(ctx, cfg.CollectionName)
+	ctx, cancel := context.WithTimeout(context.Background(), collectionInitTimeout)
+	defer cancel()
+
+	collectionID, err := ensureWithRetry(ctx, func(callCtx context.Context) (string, error) {
+		return chromaClient.EnsureCollection(callCtx, cfg.CollectionName)
+	})
 	if err != nil {
-		return nil, fmt.Errorf("ensure collection: %w", err)
+		return nil, err
 	}
 
 	return &Service{
@@ -64,6 +76,33 @@ func NewService(cfg *config.Config, ingestSvc *ingest.Service, ollamaClient *oll
 		Chroma:       chromaClient,
 		collectionID: collectionID,
 	}, nil
+}
+
+func ensureWithRetry(ctx context.Context, ensure func(context.Context) (string, error)) (string, error) {
+	backoff := collectionInitMinBackoff
+	var lastErr error
+
+	for {
+		collectionID, err := ensure(ctx)
+		if err == nil {
+			return collectionID, nil
+		}
+		lastErr = err
+
+		select {
+		case <-ctx.Done():
+			if errors.Is(ctx.Err(), context.DeadlineExceeded) {
+				return "", fmt.Errorf("ensure collection timeout after retries: %w", lastErr)
+			}
+			return "", fmt.Errorf("ensure collection canceled: %w", ctx.Err())
+		case <-time.After(backoff):
+		}
+
+		backoff *= 2
+		if backoff > collectionInitMaxBackoff {
+			backoff = collectionInitMaxBackoff
+		}
+	}
 }
 
 func (s *Service) Reindex(ctx context.Context) (ingest.Stats, error) {

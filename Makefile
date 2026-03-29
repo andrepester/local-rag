@@ -1,16 +1,18 @@
 .DEFAULT_GOAL := help
 
-.PHONY: help doctor doctor-index doctor-verify-index mod test build run reindex compose-up compose-down compose-logs compose-validate
+.PHONY: help doctor doctor-index doctor-verify-index mod test test-cover build run reindex compose-up compose-down compose-logs compose-validate
 
 GO_IMAGE ?= golang:1.25-alpine
 GO_BIN ?= /usr/local/go/bin/go
 GO_RUN = docker run --rm -u "$$(id -u):$$(id -g)" -e HOME=/tmp -v "$(PWD):/workspace" -w /workspace $(GO_IMAGE)
+COVERAGE_MIN ?= 60
 
 help:
 	@printf '%s\n' 'Available targets:'
 	@printf '  %-20s %s\n' 'make doctor' 'Run tests/build/compose checks and verify indexed data'
 	@printf '  %-20s %s\n' 'make mod' 'Download and tidy Go modules'
 	@printf '  %-20s %s\n' 'make test' 'Run Go tests in a Go container'
+	@printf '  %-20s %s\n' 'make test-cover' 'Run Go tests with coverage gate in container'
 	@printf '  %-20s %s\n' 'make build' 'Build rag binaries in a Go container'
 	@printf '  %-20s %s\n' 'make run' 'Run MCP server via Docker Compose'
 	@printf '  %-20s %s\n' 'make reindex' 'Run index build in the service container'
@@ -31,6 +33,9 @@ mod:
 
 test:
 	$(GO_RUN) $(GO_BIN) test -count=1 ./...
+
+test-cover:
+	$(GO_RUN) sh -lc "set -eu; $(GO_BIN) test -count=1 -covermode=atomic -coverprofile=coverage.out ./...; $(GO_BIN) tool cover -func=coverage.out | tee coverage.txt; awk -v min=\"$(COVERAGE_MIN)\" '/^total:/ { gsub(/%/, \"\", \$$3); if ((\$$3 + 0) < (min + 0)) { printf(\"coverage %.1f%% is below minimum %.1f%%\\n\", \$$3, min); exit 1 }; found=1 } END { if (!found) { print \"coverage total not found\"; exit 1 } }' coverage.txt"
 
 build:
 	$(GO_RUN) sh -lc '$(GO_BIN) build ./cmd/rag-mcp && $(GO_BIN) build ./cmd/rag-index'

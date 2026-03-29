@@ -41,20 +41,54 @@ type listSourcesInput struct {
 	Scope string `json:"scope,omitempty" jsonschema:"Source scope: all, docs, code"`
 }
 
+type ragService interface {
+	Search(ctx context.Context, query string, topK int, scope string, sourceFilter string) (rag.SearchResponse, error)
+	GetChunk(ctx context.Context, chunkID string) rag.ChunkResponse
+	ListSources(ctx context.Context, scope string) (rag.ListSourcesResponse, error)
+	Reindex(ctx context.Context) (ingest.Stats, error)
+}
+
+var (
+	loadConfig    = config.Load
+	newRAGService = func(cfg *config.Config) (ragService, error) {
+		ollamaClient := ollama.New(cfg.OllamaHost)
+		chromaClient := store.NewChromaClient(cfg.ChromaURL, cfg.ChromaTenant, cfg.ChromaDatabase)
+		ingestSvc := &ingest.Service{Config: cfg, Ollama: ollamaClient, Chroma: chromaClient}
+		return rag.NewService(cfg, ingestSvc, ollamaClient, chromaClient)
+	}
+	serveHTTP = func(server *http.Server) error {
+		return server.ListenAndServe()
+	}
+)
+
 func main() {
-	cfg, err := config.Load()
+	if err := run(log.Printf); err != nil {
+		log.Fatalf("service run failed: %v", err)
+	}
+}
+
+func run(logf func(string, ...any)) error {
+	cfg, err := loadConfig()
 	if err != nil {
-		log.Fatalf("invalid configuration: %v", err)
+		return fmt.Errorf("invalid configuration: %w", err)
 	}
 
-	ollamaClient := ollama.New(cfg.OllamaHost)
-	chromaClient := store.NewChromaClient(cfg.ChromaURL, cfg.ChromaTenant, cfg.ChromaDatabase)
-	ingestSvc := &ingest.Service{Config: &cfg, Ollama: ollamaClient, Chroma: chromaClient}
-	ragSvc, err := rag.NewService(&cfg, ingestSvc, ollamaClient, chromaClient)
+	ragSvc, err := newRAGService(&cfg)
 	if err != nil {
-		log.Fatalf("service init failed: %v", err)
+		return fmt.Errorf("service init failed: %w", err)
 	}
 
+	httpServer := newHTTPServer(&cfg, newMux(newMCPHandler(ragSvc)))
+	logf("rag-mcp listening on %s", httpServer.Addr)
+
+	if err := serveHTTP(httpServer); err != nil && !errors.Is(err, http.ErrServerClosed) {
+		return fmt.Errorf("http server failed: %w", err)
+	}
+
+	return nil
+}
+
+func newMCPHandler(ragSvc ragService) http.Handler {
 	server := mcp.NewServer(&mcp.Implementation{
 		Name:    "rag",
 		Version: "1.0.0",
@@ -120,8 +154,10 @@ func main() {
 	handler := mcp.NewStreamableHTTPHandler(func(*http.Request) *mcp.Server {
 		return server
 	}, nil)
-	mcpHandler := wrapMCPHandler(handler, defaultMaxMCPBodyBytes)
+	return wrapMCPHandler(handler, defaultMaxMCPBodyBytes)
+}
 
+func newMux(mcpHandler http.Handler) *http.ServeMux {
 	mux := http.NewServeMux()
 	mux.Handle("/mcp", mcpHandler)
 	mux.Handle("/mcp/", mcpHandler)
@@ -129,22 +165,19 @@ func main() {
 		w.WriteHeader(http.StatusOK)
 		_, _ = w.Write([]byte("ok"))
 	})
+	return mux
+}
 
+func newHTTPServer(cfg *config.Config, handler http.Handler) *http.Server {
 	addr := fmt.Sprintf("%s:%d", cfg.Host, cfg.Port)
-	log.Printf("rag-mcp listening on %s", addr)
-
-	httpServer := &http.Server{
+	return &http.Server{
 		Addr:              addr,
-		Handler:           mux,
+		Handler:           handler,
 		ReadTimeout:       defaultReadTimeout,
 		WriteTimeout:      defaultWriteTimeout,
 		IdleTimeout:       defaultIdleTimeout,
 		ReadHeaderTimeout: defaultReadHeaderTimeout,
 		MaxHeaderBytes:    defaultMaxHeaderBytes,
-	}
-
-	if err := httpServer.ListenAndServe(); err != nil && !errors.Is(err, http.ErrServerClosed) {
-		log.Fatalf("http server failed: %v", err)
 	}
 }
 

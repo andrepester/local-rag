@@ -37,7 +37,7 @@ func TestLoadDefaultsAndOverrides(t *testing.T) {
 }
 
 func TestLoadValidation(t *testing.T) {
-	for _, key := range []string{"RAG_CHUNK_SIZE", "RAG_CHUNK_OVERLAP", "RAG_SCOPE_DEFAULT"} {
+	for _, key := range []string{"RAG_CHUNK_SIZE", "RAG_CHUNK_OVERLAP", "RAG_SCOPE_DEFAULT", "RAG_HTTP_PORT", "RAG_MAX_TOP_K", "RAG_ENABLE_CODE_INGEST"} {
 		_ = os.Unsetenv(key)
 	}
 
@@ -52,5 +52,28 @@ func TestLoadValidation(t *testing.T) {
 	t.Setenv("RAG_SCOPE_DEFAULT", "invalid")
 	if _, err := Load(); err == nil {
 		t.Fatal("expected validation error for invalid scope")
+	}
+
+	t.Setenv("RAG_SCOPE_DEFAULT", "all")
+	t.Setenv("RAG_HTTP_PORT", "0")
+	if _, err := Load(); err == nil {
+		t.Fatal("expected validation error for invalid port range")
+	}
+
+	t.Setenv("RAG_HTTP_PORT", "not-a-number")
+	if _, err := Load(); err == nil {
+		t.Fatal("expected validation error for invalid port")
+	}
+
+	t.Setenv("RAG_HTTP_PORT", "8080")
+	t.Setenv("RAG_MAX_TOP_K", "0")
+	if _, err := Load(); err == nil {
+		t.Fatal("expected validation error for max top k")
+	}
+
+	t.Setenv("RAG_MAX_TOP_K", "50")
+	t.Setenv("RAG_ENABLE_CODE_INGEST", "not-bool")
+	if _, err := Load(); err == nil {
+		t.Fatal("expected validation error for bool")
 	}
 }
