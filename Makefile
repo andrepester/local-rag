@@ -1,6 +1,6 @@
 .DEFAULT_GOAL := help
 
-.PHONY: help doctor doctor-index doctor-verify-index mod test test-cover build run reindex compose-up compose-down compose-logs compose-validate
+.PHONY: help install install-bootstrap install-wait-ollama install-model doctor doctor-index doctor-verify-index mod test test-cover build run reindex compose-up compose-down compose-logs compose-validate
 
 GO_IMAGE ?= golang:1.25-alpine
 GO_BIN ?= /usr/local/go/bin/go
@@ -10,6 +10,7 @@ COMPOSE = docker compose --project-directory . -f docker/docker-compose.yml
 
 help:
 	@printf '%s\n' 'Available targets:'
+	@printf '  %-20s %s\n' 'make install' 'Create local config, start stack, pull model, and reindex'
 	@printf '  %-20s %s\n' 'make doctor' 'Run tests/build/compose checks and verify indexed data'
 	@printf '  %-20s %s\n' 'make mod' 'Download and tidy Go modules'
 	@printf '  %-20s %s\n' 'make test' 'Run Go tests in a Go container'
@@ -21,6 +22,25 @@ help:
 	@printf '  %-20s %s\n' 'make compose-down' 'Stop compose stack'
 	@printf '  %-20s %s\n' 'make compose-logs' 'Tail compose logs'
 	@printf '  %-20s %s\n' 'make compose-validate' 'Validate Docker Compose config'
+
+install: install-bootstrap run install-wait-ollama install-model reindex doctor-verify-index
+
+install-bootstrap:
+	$(GO_RUN) $(GO_BIN) run ./cmd/rag-install --repo-root /workspace
+
+install-wait-ollama:
+	@for i in $$(seq 1 60); do \
+		if $(COMPOSE) exec -T ollama ollama list >/dev/null 2>&1; then \
+			exit 0; \
+		fi; \
+		sleep 2; \
+	done; \
+	printf '%s\n' 'ollama did not become ready in time' >&2; \
+	exit 1
+
+install-model:
+	@model="$${EMBED_MODEL:-nomic-embed-text}"; \
+	$(COMPOSE) exec -T ollama ollama pull "$$model"
 
 doctor: test build compose-validate doctor-index
 

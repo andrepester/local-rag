@@ -14,7 +14,7 @@ import (
 )
 
 const (
-	reindexInitTimeout    = 45 * time.Second
+	reindexInitTimeout    = 10 * time.Minute
 	reindexInitMinBackoff = 250 * time.Millisecond
 	reindexInitMaxBackoff = 3 * time.Second
 )

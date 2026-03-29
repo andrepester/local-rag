@@ -6,6 +6,7 @@ retrieval over documentation and code.
 - OpenCode connects via remote MCP (`type: "remote"`)
 - Runtime can run local, in Docker, or elsewhere on the network/cloud
 - One Docker Compose file configures docs and code through mounts
+- Default local setup runs Ollama, Chroma, and rag-mcp in one Compose project
 - Default query scope is `all`
 - Local binary default bind is loopback (`127.0.0.1`) for safer defaults
 
@@ -44,8 +45,20 @@ Compose file path: `docker/docker-compose.yml`
 
 - `HOST_DOCS_DIR` mount is required (defaults to `./data/docs`)
 - `HOST_CODE_DIR` mount is required (defaults to `./data/code`, can be empty)
+- `ollama` service is included in the same Compose stack
 - Chroma persistence is managed by the `chroma_data` volume
+- Ollama persistence is managed by the `ollama_data` volume
 - Compose sets `RAG_HTTP_HOST=0.0.0.0` inside container so host port publishing still works
+
+### One-command local install
+
+```bash
+make install
+```
+
+`make install` creates `.env` from `.env.example` (if missing), upserts local
+`opencode.json`, starts the Compose stack, pulls the embedding model in the
+Ollama container, runs reindexing, and verifies indexed data.
 
 ### Start service
 
@@ -76,7 +89,8 @@ docker compose --project-directory . -f docker/docker-compose.yml down
 | `HOST_DOCS_DIR` | `./data/docs` | Host path mounted as docs source |
 | `HOST_CODE_DIR` | `./data/code` | Host path mounted as code source (can be empty) |
 | `RAG_ENABLE_CODE_INGEST` | `true` | Enable/disable code ingestion |
-| `OLLAMA_HOST` | `http://host.docker.internal:11434` | Embedding endpoint |
+| `OLLAMA_HOST` | `http://ollama:11434` | Embedding endpoint for containerized runtime |
+| `OLLAMA_PORT` | `11434` | Host port mapped to the Ollama container |
 | `EMBED_MODEL` | `nomic-embed-text` | Embedding model name |
 | `RAG_COLLECTION_NAME` | `rag` | Chroma collection name |
 | `RAG_SCOPE_DEFAULT` | `all` | Default search scope |
@@ -117,6 +131,7 @@ Note: `opencode.json` in this repository is local/machine-specific and ignored b
 ## Local development (container-first)
 
 ```bash
+make install
 make mod
 make test
 make build
@@ -152,7 +167,7 @@ GitHub Actions run:
 
 - `ci-fast`: `gofmt` verification, `go vet`, containerized `go test` with coverage gate, `go build`, `docker compose config`
 - `security-baseline`: gitleaks + `govulncheck`
-- `integration-ollama`: Ollama container + Compose stack + reindex smoke test
+- `integration-ollama`: full `make install` stack startup (Ollama + Chroma + rag-mcp) + reindex smoke test
 - `supply-chain`: CycloneDX SBOM artifacts, license allowlist gate, Syft + Grype filesystem and image CVE scans
 
 ## Dependency automation
