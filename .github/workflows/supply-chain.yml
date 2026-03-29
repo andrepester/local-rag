@@ -77,31 +77,43 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v5
 
+      - name: Install Syft
+        run: |
+          curl -sSfL https://raw.githubusercontent.com/anchore/syft/v1.22.0/install.sh | sh -s -- -b /usr/local/bin v1.22.0
+
+      - name: Install Grype
+        run: |
+          curl -sSfL https://raw.githubusercontent.com/anchore/grype/v0.87.0/install.sh | sh -s -- -b /usr/local/bin v0.87.0
+
       - name: Build runtime image
         run: docker build -t local-rag-scan:ci .
 
-      - name: Trivy filesystem scan (SARIF)
-        uses: aquasecurity/trivy-action@0.28.0
+      - name: Generate filesystem SBOM (Syft)
+        run: syft dir:. -o cyclonedx-json=sbom-fs.cdx.json
+
+      - name: Upload filesystem SBOM artifact
+        uses: actions/upload-artifact@v4
         with:
-          scan-type: fs
-          scan-ref: .
-          severity: HIGH,CRITICAL
-          ignore-unfixed: true
-          format: sarif
-          output: trivy-fs.sarif
-          exit-code: '1'
+          name: sbom-fs-cyclonedx
+          path: sbom-fs.cdx.json
+
+      - name: Grype filesystem scan (SARIF)
+        run: grype sbom:sbom-fs.cdx.json --fail-on high -o sarif > grype-fs.sarif
 
       - name: Upload filesystem SARIF
         if: always()
         uses: github/codeql-action/upload-sarif@v3
         with:
-          sarif_file: trivy-fs.sarif
+          sarif_file: grype-fs.sarif
 
-      - name: Trivy image scan
-        uses: aquasecurity/trivy-action@0.28.0
+      - name: Generate image SBOM (Syft)
+        run: syft local-rag-scan:ci -o cyclonedx-json=sbom-image.cdx.json
+
+      - name: Upload image SBOM artifact
+        uses: actions/upload-artifact@v4
         with:
-          image-ref: local-rag-scan:ci
-          severity: HIGH,CRITICAL
-          ignore-unfixed: true
-          format: table
-          exit-code: '1'
+          name: sbom-image-cyclonedx
+          path: sbom-image.cdx.json
+
+      - name: Grype image scan
+        run: grype sbom:sbom-image.cdx.json --fail-on high -o table
