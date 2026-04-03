@@ -29,7 +29,11 @@ help:
 install: install-bootstrap run install-wait-ollama install-model reindex doctor-verify-index
 
 install-bootstrap:
-	$(GO_RUN) $(GO_BIN) run ./cmd/rag-install --repo-root /workspace
+	@set -eu; \
+		host_repo="$$(pwd -P)"; \
+		host_parent="$$(dirname "$$host_repo")"; \
+		repo_name="$$(basename "$$host_repo")"; \
+		docker run --rm -u "$$(id -u):$$(id -g)" -e HOME=/tmp -e RAG_HTTP_PORT -e HOST_DOCS_DIR -e HOST_CODE_DIR -e HOST_INDEX_DIR -e HOST_MODELS_DIR -v "$$host_parent:/workspace-parent" -w "/workspace-parent/$$repo_name" $(GO_IMAGE) $(GO_BIN) run ./cmd/rag-install --repo-root "/workspace-parent/$$repo_name"
 
 install-wait-ollama:
 	@for i in $$(seq 1 60); do \
@@ -73,6 +77,7 @@ build:
 bootstrap-smoke:
 	@set -eu; \
 	backup_dir="$$(mktemp -d .bootstrap-smoke-backup.XXXXXX)"; \
+	alongside_root=""; \
 	had_env=0; \
 	had_config=0; \
 	had_config_invalid=0; \
@@ -81,6 +86,7 @@ bootstrap-smoke:
 	if [ -f opencode.json.invalid ]; then cp opencode.json.invalid "$$backup_dir/opencode.json.invalid"; had_config_invalid=1; fi; \
 	restore() { \
 		rm -rf .smoke-override; \
+		if [ -n "$$alongside_root" ] && [ -d "$$alongside_root" ]; then rm -rf "$$alongside_root"; fi; \
 		if [ "$$had_env" -eq 1 ]; then cp "$$backup_dir/.env" .env; else rm -f .env; fi; \
 		if [ "$$had_config" -eq 1 ]; then cp "$$backup_dir/opencode.json" opencode.json; else rm -f opencode.json; fi; \
 		if [ "$$had_config_invalid" -eq 1 ]; then cp "$$backup_dir/opencode.json.invalid" opencode.json.invalid; else rm -f opencode.json.invalid; fi; \
@@ -96,7 +102,15 @@ bootstrap-smoke:
 	test -d ./.smoke-override/docs; \
 	test -d ./.smoke-override/code; \
 	test -d ./.smoke-override/index; \
-	test -d ./.smoke-override/models
+	test -d ./.smoke-override/models; \
+	host_parent="$$(dirname "$$(pwd -P)")"; \
+	alongside_root="$$(mktemp -d "$$host_parent/.bootstrap-smoke-alongside.XXXXXX")"; \
+	alongside_name="$$(basename "$$alongside_root")"; \
+	HOST_DOCS_DIR="../$$alongside_name/docs" HOST_CODE_DIR="../$$alongside_name/code" HOST_INDEX_DIR="../$$alongside_name/index" HOST_MODELS_DIR="../$$alongside_name/models" $(MAKE) install-bootstrap; \
+	test -d "$$alongside_root/docs"; \
+	test -d "$$alongside_root/code"; \
+	test -d "$$alongside_root/index"; \
+	test -d "$$alongside_root/models"
 
 govulncheck:
 	$(GO_RUN) $(GO_BIN) run golang.org/x/vuln/cmd/govulncheck@v1.1.4 ./...

@@ -88,11 +88,22 @@ Scope behavior:
 | Target | Purpose |
 |---|---|
 | `make install` | Bootstrap config, start runtime stack, pull model, reindex, verify data |
+| `make install-bootstrap` | Create/update `.env`, `opencode.json`, and ensure host mount directories |
+| `make install-wait-ollama` | Wait until the Ollama service responds |
+| `make install-model` | Pull `${EMBED_MODEL}` into Ollama |
 | `make doctor` | Run quality checks plus index verification |
+| `make doctor-index` | Start stack, reindex, and verify indexed data |
+| `make doctor-verify-index` | Verify that indexed data exists in Chroma |
+| `make fmt-check` | Verify `gofmt` formatting in container |
+| `make vet` | Run `go vet ./...` in container |
 | `make mod` | Tidy Go modules |
 | `make test` | Run Go tests in a container |
 | `make test-cover` | Run tests with coverage gate |
 | `make build` | Containerized compile check (`go build ./...`) |
+| `make bootstrap-smoke` | Smoke-test bootstrap incl. env/config backup-restore and HOST_* overrides |
+| `make govulncheck` | Run Go vulnerability scan (`govulncheck`) in container |
+| `make sbom-go` | Generate CycloneDX SBOM for Go modules |
+| `make licenses-export` | Export dependency licenses to `licenses.csv` |
 | `make run` | Start runtime stack in detached mode |
 | `make reindex` | Rebuild semantic index from mounted sources |
 | `make compose-up` | Start runtime stack |
