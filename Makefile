@@ -36,7 +36,8 @@ install-bootstrap:
 		resolve_host_override() { \
 			key="$$1"; \
 			eval "value=\$${$$key-}"; \
-			if [ -n "$$value" ]; then \
+			value_non_ws="$$(printf '%s' "$$value" | tr -d '[:space:]')"; \
+			if [ -n "$$value_non_ws" ]; then \
 				printf '%s' "$$value"; \
 				return 0; \
 			fi; \
@@ -50,7 +51,8 @@ install-bootstrap:
 					value="$${trimmed#*=}"; \
 					value="$${value#\"}"; value="$${value%\"}"; \
 					value="$${value#\'}"; value="$${value%\'}"; \
-					if [ -n "$$value" ]; then \
+					value_non_ws="$$(printf '%s' "$$value" | tr -d '[:space:]')"; \
+					if [ -n "$$value_non_ws" ]; then \
 						printf '%s' "$$value"; \
 					fi; \
 					return 0 ;; \
@@ -114,14 +116,17 @@ bootstrap-smoke:
 	had_env=0; \
 	had_config=0; \
 	had_config_invalid=0; \
+	had_smoke_override=0; \
 	restored=0; \
 	if [ -f .env ]; then cp .env "$$backup_dir/.env"; had_env=1; fi; \
 	if [ -f opencode.json ]; then cp opencode.json "$$backup_dir/opencode.json"; had_config=1; fi; \
 	if [ -f opencode.json.invalid ]; then cp opencode.json.invalid "$$backup_dir/opencode.json.invalid"; had_config_invalid=1; fi; \
+	if [ -e .smoke-override ]; then cp -R .smoke-override "$$backup_dir/.smoke-override"; had_smoke_override=1; fi; \
 	restore() { \
 		if [ "$$restored" -eq 1 ]; then return; fi; \
 		restored=1; \
 		rm -rf .smoke-override; \
+		if [ "$$had_smoke_override" -eq 1 ] && [ -e "$$backup_dir/.smoke-override" ]; then cp -R "$$backup_dir/.smoke-override" .smoke-override; fi; \
 		if [ -n "$$alongside_root" ] && [ -d "$$alongside_root" ]; then rm -rf "$$alongside_root"; fi; \
 		if [ -n "$$absolute_root" ] && [ -d "$$absolute_root" ]; then rm -rf "$$absolute_root"; fi; \
 		if [ "$$had_env" -eq 1 ] && [ -f "$$backup_dir/.env" ]; then cp "$$backup_dir/.env" .env; else rm -f .env; fi; \
