@@ -71,17 +71,32 @@ build:
 	$(GO_RUN) $(GO_BIN) build ./...
 
 bootstrap-smoke:
-	rm -f .env opencode.json opencode.json.invalid
-	rm -rf .smoke-override
-	$(MAKE) install-bootstrap
-	test -f .env
-	test -f opencode.json
-	HOST_DOCS_DIR=./.smoke-override/docs HOST_CODE_DIR=./.smoke-override/code HOST_INDEX_DIR=./.smoke-override/index HOST_MODELS_DIR=./.smoke-override/models $(MAKE) install-bootstrap
-	test -d ./.smoke-override/docs
-	test -d ./.smoke-override/code
-	test -d ./.smoke-override/index
+	@set -eu; \
+	backup_dir="$$(mktemp -d .bootstrap-smoke-backup.XXXXXX)"; \
+	had_env=0; \
+	had_config=0; \
+	had_config_invalid=0; \
+	if [ -f .env ]; then cp .env "$$backup_dir/.env"; had_env=1; fi; \
+	if [ -f opencode.json ]; then cp opencode.json "$$backup_dir/opencode.json"; had_config=1; fi; \
+	if [ -f opencode.json.invalid ]; then cp opencode.json.invalid "$$backup_dir/opencode.json.invalid"; had_config_invalid=1; fi; \
+	restore() { \
+		rm -rf .smoke-override; \
+		if [ "$$had_env" -eq 1 ]; then cp "$$backup_dir/.env" .env; else rm -f .env; fi; \
+		if [ "$$had_config" -eq 1 ]; then cp "$$backup_dir/opencode.json" opencode.json; else rm -f opencode.json; fi; \
+		if [ "$$had_config_invalid" -eq 1 ]; then cp "$$backup_dir/opencode.json.invalid" opencode.json.invalid; else rm -f opencode.json.invalid; fi; \
+		rm -rf "$$backup_dir"; \
+	}; \
+	trap 'status=$$?; restore; exit $$status' 0 1 2 3 15; \
+	rm -f .env opencode.json opencode.json.invalid; \
+	rm -rf .smoke-override; \
+	$(MAKE) install-bootstrap; \
+	test -f .env; \
+	test -f opencode.json; \
+	HOST_DOCS_DIR=./.smoke-override/docs HOST_CODE_DIR=./.smoke-override/code HOST_INDEX_DIR=./.smoke-override/index HOST_MODELS_DIR=./.smoke-override/models $(MAKE) install-bootstrap; \
+	test -d ./.smoke-override/docs; \
+	test -d ./.smoke-override/code; \
+	test -d ./.smoke-override/index; \
 	test -d ./.smoke-override/models
-	rm -rf .smoke-override
 
 govulncheck:
 	$(GO_RUN) $(GO_BIN) run golang.org/x/vuln/cmd/govulncheck@v1.1.4 ./...
