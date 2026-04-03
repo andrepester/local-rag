@@ -185,6 +185,25 @@ func TestEnsureHostDataDirsPrefersProcessEnvOverDotEnv(t *testing.T) {
 	}
 }
 
+func TestResolveHostDirFallsBackToDotEnvWhenProcessEnvIsEmpty(t *testing.T) {
+	repoRoot := t.TempDir()
+	envValues := map[string]string{hostDocsEnvKey: "./from-dotenv/docs"}
+	t.Setenv(hostDocsEnvKey, "   ")
+
+	got, err := resolveHostDir(repoRoot, envValues, hostDocsEnvKey, hostDocsDir)
+	if err != nil {
+		t.Fatalf("resolveHostDir() failed: %v", err)
+	}
+
+	want, err := filepath.Abs(filepath.Join(repoRoot, "from-dotenv", "docs"))
+	if err != nil {
+		t.Fatalf("resolve expected path: %v", err)
+	}
+	if got != want {
+		t.Fatalf("resolved path = %s, want %s", got, want)
+	}
+}
+
 func TestUpsertOpenCodeConfigCreatesFile(t *testing.T) {
 	repoRoot := t.TempDir()
 

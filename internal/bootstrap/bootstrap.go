@@ -136,7 +136,7 @@ func EnsureHostDataDirs(repoRoot string) error {
 }
 
 func resolveHostDir(repoRoot string, envValues map[string]string, key string, fallback string) (string, error) {
-	if value, ok := os.LookupEnv(key); ok {
+	if value, ok := os.LookupEnv(key); ok && strings.TrimSpace(value) != "" {
 		return resolveHostPath(repoRoot, value, fallback)
 	}
 	return resolveHostPath(repoRoot, envValues[key], fallback)
