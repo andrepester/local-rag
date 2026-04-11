@@ -199,6 +199,7 @@ clean-install:
 			*) printf '%s\n' 'FULL_RESET must be one of: 0,1,true,false,yes,no' >&2; exit 2 ;; \
 		esac; \
 		if [ "$$is_full_reset" -eq 1 ]; then \
+			repo_root="$$(pwd -P)"; \
 			resolve_host_override() { \
 				key="$$1"; \
 				default_value="$$2"; \
@@ -234,14 +235,34 @@ clean-install:
 			}; \
 			to_abs() { \
 				value="$$1"; \
-				mkdir -p "$$value"; \
-				(cd "$$value" && pwd -P); \
+				case "$$value" in \
+					/*) target="$$value" ;; \
+					*) target="$$repo_root/$$value" ;; \
+				esac; \
+				target="$${target%/}"; \
+				if [ -z "$$target" ]; then \
+					printf '/'; \
+					return 0; \
+				fi; \
+				dir_part="$${target%/*}"; \
+				base_part="$${target##*/}"; \
+				if [ "$$base_part" = "." ] || [ "$$base_part" = ".." ]; then \
+					printf '%s\n' "FULL_RESET refused: unresolved terminal path segment '$$base_part' in '$$target'" >&2; \
+					exit 3; \
+				fi; \
+				if [ -z "$$dir_part" ]; then \
+					dir_part="/"; \
+				fi; \
+				dir_abs="$$(cd "$$dir_part" 2>/dev/null && pwd -P)" || { \
+					printf '%s\n' "FULL_RESET refused: cannot resolve parent directory '$$dir_part'" >&2; \
+					exit 3; \
+				}; \
+				printf '%s/%s' "$$dir_abs" "$$base_part"; \
 			}; \
 			index_dir="$$(resolve_host_override HOST_INDEX_DIR ./data/index)"; \
 			models_dir="$$(resolve_host_override HOST_MODELS_DIR ./data/models)"; \
 			index_abs="$$(to_abs "$$index_dir")"; \
 			models_abs="$$(to_abs "$$models_dir")"; \
-			repo_root="$$(pwd -P)"; \
 			repo_parent="$$(dirname "$$repo_root")"; \
 			home_dir="$${HOME:-}"; \
 			assert_safe_reset_dir() { \
@@ -269,8 +290,12 @@ clean-install:
 				esac; \
 				depth="$$(printf '%s' "$$dir" | tr -cd '/' | wc -c | tr -d '[:space:]')"; \
 				if [ "$$depth" -lt 3 ]; then \
-					printf '%s\n' "FULL_RESET refused: $$label '$$dir' is too broad (depth $$depth)" >&2; \
-					exit 3; \
+					case "$$dir" in \
+						/tmp/*|/mnt/*) ;; \
+						*) \
+							printf '%s\n' "FULL_RESET refused: $$label '$$dir' is too broad (depth $$depth)" >&2; \
+							exit 3 ;; \
+					esac; \
 				fi; \
 			}; \
 			assert_safe_reset_dir "$$index_abs" HOST_INDEX_DIR; \
