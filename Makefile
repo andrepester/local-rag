@@ -34,6 +34,16 @@ install-bootstrap:
 		host_repo="$$(pwd -P)"; \
 		host_parent="$$(dirname "$$host_repo")"; \
 		repo_name="$$(basename "$$host_repo")"; \
+		interactive_mode="$${RAG_INSTALL_INTERACTIVE-}"; \
+		interactive_non_ws="$$(printf '%s' "$$interactive_mode" | tr -d '[:space:]')"; \
+		if [ -z "$$interactive_non_ws" ]; then \
+			if [ -t 0 ]; then interactive_mode=1; else interactive_mode=0; fi; \
+		fi; \
+		case "$$interactive_mode" in \
+			1|true|TRUE|yes|YES) docker_stdin_flag='-i'; installer_interactive_flag='--interactive' ;; \
+			0|false|FALSE|no|NO|'') docker_stdin_flag=''; installer_interactive_flag='' ;; \
+			*) printf '%s\n' 'RAG_INSTALL_INTERACTIVE must be one of: 0,1,true,false,yes,no' >&2; exit 2 ;; \
+		esac; \
 		resolve_host_override() { \
 			key="$$1"; \
 			eval "value=\$${$$key-}"; \
@@ -66,7 +76,7 @@ install-bootstrap:
 				return 0; \
 			done < .env; \
 		}; \
-		set -- docker run --rm -u "$$(id -u):$$(id -g)" -e HOME=/tmp -e RAG_HTTP_PORT -e HOST_DOCS_DIR -e HOST_CODE_DIR -e HOST_INDEX_DIR -e HOST_MODELS_DIR -v "$$host_parent:/workspace-parent" -w "/workspace-parent/$$repo_name"; \
+		set -- docker run $${docker_stdin_flag:+$$docker_stdin_flag} --rm -u "$$(id -u):$$(id -g)" -e HOME=/tmp -e RAG_HTTP_PORT -e HOST_DOCS_DIR -e HOST_CODE_DIR -e HOST_INDEX_DIR -e HOST_MODELS_DIR -v "$$host_parent:/workspace-parent" -w "/workspace-parent/$$repo_name"; \
 		for key in HOST_DOCS_DIR HOST_CODE_DIR HOST_INDEX_DIR HOST_MODELS_DIR; do \
 			resolved="$$(resolve_host_override "$$key")"; \
 			if [ -n "$$resolved" ]; then \
@@ -78,7 +88,7 @@ install-bootstrap:
 				set -- "$$@" -e "$$key=$$resolved_abs" -v "$$resolved_abs:$$resolved_abs"; \
 			fi; \
 		done; \
-		"$$@" $(GO_IMAGE) $(GO_BIN) run ./cmd/rag-install --repo-root "/workspace-parent/$$repo_name"
+		"$$@" $(GO_IMAGE) $(GO_BIN) run ./cmd/rag-install --repo-root "/workspace-parent/$$repo_name" $$installer_interactive_flag
 
 install-wait-ollama:
 	@for i in $$(seq 1 60); do \

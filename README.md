@@ -121,6 +121,12 @@ Scope behavior:
 | `make compose-logs` | Stream runtime logs |
 | `make compose-validate` | Validate runtime stack configuration |
 
+Interactive installer behavior:
+
+- `make install` / `make install-bootstrap` prompts in interactive terminals whether standard source paths should be used.
+- If you choose custom paths, `HOST_DOCS_DIR` and `HOST_CODE_DIR` are written to `.env` and used immediately for the current install.
+- Use `RAG_INSTALL_INTERACTIVE=0` to disable prompts, or `RAG_INSTALL_INTERACTIVE=1` to force prompts when stdin is available.
+
 Lifecycle examples:
 
 ```bash
