@@ -124,8 +124,8 @@ Scope behavior:
 Interactive installer behavior:
 
 - `make install` / `make install-bootstrap` prompts in interactive terminals whether standard source paths should be used.
-- If you choose custom paths, `HOST_DOCS_DIR` and `HOST_CODE_DIR` are written to `.env` and used immediately for the current install.
-- Use `RAG_INSTALL_INTERACTIVE=0` to disable prompts, or `RAG_INSTALL_INTERACTIVE=1` to force prompts when stdin is available.
+- If you choose custom paths, `HOST_DOCS_DIR` and `HOST_CODE_DIR` are written to `.env` on the host before Docker starts.
+- Make targets remain the user-facing API; host-side shell helpers under `shell/` are internal implementation details.
 
 Lifecycle examples:
 
