@@ -10,23 +10,32 @@ repo_name=$(basename "$host_repo")
 docs_value=$(resolve_host_override HOST_DOCS_DIR ./data/docs)
 code_value=$(resolve_host_override HOST_CODE_DIR ./data/code)
 persist_source_dirs=0
+force_interactive_raw=${INSTALL_BOOTSTRAP_FORCE_INTERACTIVE-}
+force_interactive=$(parse_bool_01 "$force_interactive_raw" 0) || {
+	printf '%s\n' "invalid INSTALL_BOOTSTRAP_FORCE_INTERACTIVE '$force_interactive_raw' (expected 1/0/true/false/yes/no)" >&2
+	exit 2
+}
 
 if [ ! -f .env ]; then
 	cp .env.example .env
 	chmod 600 .env
 fi
 
-if [ -t 0 ] && [ -t 1 ]; then
+if [ "$force_interactive" -eq 1 ] || { [ -t 0 ] && [ -t 1 ]; }; then
 	persist_source_dirs=1
-	printf '%s' 'Use standard source directories (./data/docs and ./data/code)? [Y/n]: '
+	printf '%s\n' "Current HOST_DOCS_DIR=$docs_value"
+	printf '%s\n' "Current HOST_CODE_DIR=$code_value"
+	printf '%s' 'Keep current [K], use standard (./data/docs + ./data/code) [s], or enter custom [c]? [K/s/c]: '
 	IFS= read -r selection || true
 	selection_normalized=$(printf '%s' "$selection" | tr '[:upper:]' '[:lower:]' | tr -d '[:space:]')
 	case "$selection_normalized" in
-		''|y|yes)
+		''|k|keep)
+			;;
+		y|yes|s|standard)
 			docs_value=./data/docs
 			code_value=./data/code
 			;;
-		n|no)
+		n|no|c|custom)
 			printf '%s' 'Enter HOST_DOCS_DIR: '
 			IFS= read -r custom_docs
 			if ! is_non_empty_non_ws "$custom_docs"; then
@@ -43,7 +52,7 @@ if [ -t 0 ] && [ -t 1 ]; then
 			code_value="$custom_code"
 			;;
 		*)
-			printf '%s\n' "invalid selection '$selection', expected y/yes or n/no" >&2
+			printf '%s\n' "invalid selection '$selection', expected keep/standard/custom" >&2
 			exit 2
 			;;
 	esac

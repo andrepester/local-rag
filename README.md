@@ -123,8 +123,9 @@ Scope behavior:
 
 Interactive installer behavior:
 
-- `make install` / `make install-bootstrap` prompts in interactive terminals whether standard source paths should be used.
-- If you choose custom paths, `HOST_DOCS_DIR` and `HOST_CODE_DIR` are written to `.env` on the host before Docker starts.
+- `make install` / `make install-bootstrap` prompts in interactive terminals with three options: keep current source paths (default), use standard `./data/docs` + `./data/code`, or enter custom paths.
+- Pressing Enter keeps the currently resolved values (from explicit `HOST_DOCS_DIR` / `HOST_CODE_DIR`, then `.env`, then defaults).
+- The selected source paths are written to `.env` on the host before Docker starts.
 - Make targets remain the user-facing API; host-side shell helpers under `shell/` are internal implementation details.
 
 Lifecycle examples:
