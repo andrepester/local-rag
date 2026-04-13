@@ -13,7 +13,7 @@ build_go_runner_image() {
 
 run_go_runner() {
 	runner_image=$(go_runner_image)
-	docker run --rm -u "$(id -u):$(id -g)" -e HOME=/tmp -v "$(pwd):/workspace" -w /workspace "$runner_image" "$@"
+	docker run --rm -u "$(id -u):$(id -g)" -e HOME=/tmp -e GOPATH=/tmp/go -e GOMODCACHE=/tmp/go/pkg/mod -e GOCACHE=/tmp/go-build -v "$(pwd):/workspace" -w /workspace "$runner_image" "$@"
 }
 
 run_go_command() {
