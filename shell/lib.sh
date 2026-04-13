@@ -1,5 +1,22 @@
 #!/bin/sh
 
+default_go_image() {
+	printf '%s' 'golang:1.25.9-alpine@sha256:7a00384194cf2cb68924bbb918d675f1517357433c8541bac0ab2f929b9d5447'
+}
+
+setup_go_toolchain_env() {
+	if [ -z "${GO_IMAGE-}" ]; then
+		GO_IMAGE=$(default_go_image)
+	fi
+	if [ -z "${GO_BIN-}" ]; then
+		GO_BIN=/usr/local/go/bin/go
+	fi
+	if [ -z "${GOFMT_BIN-}" ]; then
+		GOFMT_BIN=/usr/local/go/bin/gofmt
+	fi
+	export GO_IMAGE GO_BIN GOFMT_BIN
+}
+
 is_non_empty_non_ws() {
 	value="$1"
 	non_ws=$(printf '%s' "$value" | tr -d '[:space:]')

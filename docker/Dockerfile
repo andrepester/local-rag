@@ -8,7 +8,14 @@ RUN go mod download
 COPY cmd ./cmd
 COPY internal ./internal
 
-FROM base AS test
+FROM base AS test-runner
+
+WORKDIR /workspace
+ENTRYPOINT ["/usr/local/go/bin/go"]
+
+FROM test-runner AS test
+
+WORKDIR /src
 
 RUN go test -count=1 ./...
 

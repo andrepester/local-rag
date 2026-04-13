@@ -3,8 +3,7 @@ set -eu
 
 . ./shell/lib.sh
 
-: "${GO_IMAGE:=golang:1.25.9-alpine@sha256:7a00384194cf2cb68924bbb918d675f1517357433c8541bac0ab2f929b9d5447}"
-: "${GO_BIN:=/usr/local/go/bin/go}"
+setup_go_toolchain_env
 
 host_repo=$(pwd -P)
 host_parent=$(dirname "$host_repo")

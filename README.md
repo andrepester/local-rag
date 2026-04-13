@@ -100,7 +100,7 @@ Scope behavior:
 | `make clean-install` | Reinstall stack from scratch; preserves data by default, wipes index/models only with `FULL_RESET=1` |
 | `make up` | Start runtime stack in detached mode |
 | `make down` | Controlled runtime shutdown without container removal |
-| `make test` | Run Go tests in a container |
+| `make test` | Run Go tests via the Dockerfile `test-runner` stage |
 | `make reindex` | Rebuild semantic index in the running `rag-mcp` container |
 | `make logs` | Stream runtime logs |
 | `make doctor` | Runtime checks for running stack (compose config, reindex, index verify, health) |
@@ -123,11 +123,13 @@ make clean-install FULL_RESET=1
 Warning: `make clean-install FULL_RESET=1` permanently deletes the host directories resolved from `HOST_INDEX_DIR` and `HOST_MODELS_DIR` before reinstalling.
 
 All Go toolchain commands run in containers through `Makefile` targets, so a local Go installation is not required for normal development flow.
+The canonical default Go toolchain image for shell helpers is defined in `shell/lib.sh` (`default_go_image`).
 
 Docker-only Guardrails:
 
 - Standard local workflows use `make` targets only; direct local `go` execution is intentionally avoided.
-- CI workflows execute quality/security checks via dedicated shell scripts under `shell/` or direct Docker long commands, independent from user-facing make targets.
+- CI workflows execute quality/security checks via dedicated shell scripts under `shell/` or direct Docker long commands.
+- `make test` and the CI coverage gate use the same Dockerfile-based test container path (`shell/dockerfile-test.sh`).
 
 ## Troubleshooting & Diagnose
 
@@ -156,6 +158,9 @@ Run end-to-end health and index checks:
 ```bash
 make doctor
 ```
+
+`make reindex` and the reindex/index-verify steps inside `make doctor` execute in the running `rag-mcp` container via `docker compose exec -T`.
+If the stack is not running, both commands fail fast with a deterministic error.
 
 Run index verification only:
 
