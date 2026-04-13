@@ -4,4 +4,5 @@ set -eu
 . ./shell/lib.sh
 
 build_go_runner_image
-run_go_runner sh -lc "set -eu; out=\"\$(/usr/local/go/bin/gofmt -l .)\"; if [ -n \"\$out\" ]; then printf '%s\n' 'Go files are not formatted:' >&2; printf '%s\n' \"\$out\" >&2; exit 1; fi"
+runner_gofmt_bin=$(go_runner_gofmt_bin)
+run_go_runner sh -lc "set -eu; out=\"\$($runner_gofmt_bin -l .)\"; if [ -n \"\$out\" ]; then printf '%s\n' 'Go files are not formatted:' >&2; printf '%s\n' \"\$out\" >&2; exit 1; fi"

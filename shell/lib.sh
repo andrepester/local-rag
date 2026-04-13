@@ -12,6 +12,27 @@ go_runner_bin() {
 	printf '%s' "${GO_BIN:-/usr/local/go/bin/go}"
 }
 
+go_runner_bindir() {
+	runner_bin=$(go_runner_bin)
+	case "$runner_bin" in
+		*/*)
+			printf '%s' "${runner_bin%/*}"
+			;;
+		*)
+			printf ''
+			;;
+	esac
+}
+
+go_runner_gofmt_bin() {
+	runner_bindir=$(go_runner_bindir)
+	if [ -n "$runner_bindir" ]; then
+		printf '%s/gofmt' "$runner_bindir"
+		return 0
+	fi
+	printf '%s' 'gofmt'
+}
+
 build_go_runner_image() {
 	if is_non_empty_non_ws "${GO_IMAGE-}"; then
 		return 0
