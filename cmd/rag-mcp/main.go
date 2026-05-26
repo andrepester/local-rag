@@ -2,10 +2,13 @@ package main
 
 import (
 	"context"
+	"crypto/sha256"
+	"crypto/subtle"
 	"errors"
 	"fmt"
 	"log"
 	"net/http"
+	"strings"
 	"time"
 
 	"github.com/modelcontextprotocol/go-sdk/mcp"
@@ -78,7 +81,7 @@ func run(logf func(string, ...any)) error {
 		return fmt.Errorf("service init failed: %w", err)
 	}
 
-	httpServer := newHTTPServer(&cfg, newMux(newMCPHandler(ragSvc)))
+	httpServer := newHTTPServer(&cfg, newMux(newMCPHandler(ragSvc, cfg.APIToken)))
 	logf("rag-mcp listening on %s", httpServer.Addr)
 
 	if err := serveHTTP(httpServer); err != nil && !errors.Is(err, http.ErrServerClosed) {
@@ -88,7 +91,7 @@ func run(logf func(string, ...any)) error {
 	return nil
 }
 
-func newMCPHandler(ragSvc ragService) http.Handler {
+func newMCPHandler(ragSvc ragService, apiToken string) http.Handler {
 	server := mcp.NewServer(&mcp.Implementation{
 		Name:    "rag",
 		Version: "1.0.0",
@@ -154,7 +157,7 @@ func newMCPHandler(ragSvc ragService) http.Handler {
 	handler := mcp.NewStreamableHTTPHandler(func(*http.Request) *mcp.Server {
 		return server
 	}, nil)
-	return wrapMCPHandler(handler, defaultMaxMCPBodyBytes)
+	return wrapMCPHandler(handler, defaultMaxMCPBodyBytes, apiToken)
 }
 
 func newMux(mcpHandler http.Handler) *http.ServeMux {
@@ -181,8 +184,41 @@ func newHTTPServer(cfg *config.Config, handler http.Handler) *http.Server {
 	}
 }
 
-func wrapMCPHandler(next http.Handler, maxBodyBytes int64) http.Handler {
-	return limitRequestBodyMiddleware(maxBodyBytes, next)
+func wrapMCPHandler(next http.Handler, maxBodyBytes int64, apiToken string) http.Handler {
+	return bearerTokenAuthMiddleware(apiToken, limitRequestBodyMiddleware(maxBodyBytes, next))
+}
+
+func bearerTokenAuthMiddleware(apiToken string, next http.Handler) http.Handler {
+	if strings.TrimSpace(apiToken) == "" {
+		return next
+	}
+
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		authHeaders := r.Header.Values("Authorization")
+		if len(authHeaders) != 1 || !validBearerToken(authHeaders[0], apiToken) {
+			w.Header().Set("WWW-Authenticate", "Bearer")
+			http.Error(w, "unauthorized", http.StatusUnauthorized)
+			return
+		}
+
+		next.ServeHTTP(w, r)
+	})
+}
+
+func validBearerToken(authHeader, apiToken string) bool {
+	const prefix = "Bearer "
+	if !strings.HasPrefix(authHeader, prefix) {
+		return false
+	}
+
+	token := strings.TrimPrefix(authHeader, prefix)
+	if token == "" || strings.TrimSpace(token) != token {
+		return false
+	}
+
+	tokenDigest := sha256.Sum256([]byte(token))
+	apiTokenDigest := sha256.Sum256([]byte(apiToken))
+	return subtle.ConstantTimeCompare(tokenDigest[:], apiTokenDigest[:]) == 1
 }
 
 func limitRequestBodyMiddleware(maxBodyBytes int64, next http.Handler) http.Handler {

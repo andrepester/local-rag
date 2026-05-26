@@ -51,6 +51,115 @@ func TestLimitRequestBodyMiddleware(t *testing.T) {
 	}
 }
 
+func TestBearerTokenAuthMiddlewareAllowsRequestsWithoutConfiguredToken(t *testing.T) {
+	h := bearerTokenAuthMiddleware("", http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		w.WriteHeader(http.StatusNoContent)
+	}))
+
+	req := httptest.NewRequest(http.MethodPost, "/mcp", nil)
+	res := httptest.NewRecorder()
+	h.ServeHTTP(res, req)
+
+	if res.Code != http.StatusNoContent {
+		t.Fatalf("status = %d, want %d", res.Code, http.StatusNoContent)
+	}
+}
+
+func TestBearerTokenAuthMiddleware(t *testing.T) {
+	tests := []struct {
+		name          string
+		authHeaders   []string
+		wantStatus    int
+		wantProtected bool
+	}{
+		{
+			name:       "missing header",
+			wantStatus: http.StatusUnauthorized,
+		},
+		{
+			name:        "wrong scheme",
+			authHeaders: []string{"Basic secret"},
+			wantStatus:  http.StatusUnauthorized,
+		},
+		{
+			name:        "empty bearer",
+			authHeaders: []string{"Bearer "},
+			wantStatus:  http.StatusUnauthorized,
+		},
+		{
+			name:        "wrong token",
+			authHeaders: []string{"Bearer wrong"},
+			wantStatus:  http.StatusUnauthorized,
+		},
+		{
+			name:        "token with trailing whitespace",
+			authHeaders: []string{"Bearer secret "},
+			wantStatus:  http.StatusUnauthorized,
+		},
+		{
+			name:        "multiple authorization headers",
+			authHeaders: []string{"Bearer secret", "Bearer secret"},
+			wantStatus:  http.StatusUnauthorized,
+		},
+		{
+			name:          "valid token",
+			authHeaders:   []string{"Bearer secret"},
+			wantStatus:    http.StatusNoContent,
+			wantProtected: true,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			protectedCalled := false
+			h := bearerTokenAuthMiddleware("secret", http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+				protectedCalled = true
+				w.WriteHeader(http.StatusNoContent)
+			}))
+
+			req := httptest.NewRequest(http.MethodPost, "/mcp", nil)
+			for _, header := range tt.authHeaders {
+				req.Header.Add("Authorization", header)
+			}
+			res := httptest.NewRecorder()
+			h.ServeHTTP(res, req)
+
+			if res.Code != tt.wantStatus {
+				t.Fatalf("status = %d, want %d", res.Code, tt.wantStatus)
+			}
+			if protectedCalled != tt.wantProtected {
+				t.Fatalf("protectedCalled = %v, want %v", protectedCalled, tt.wantProtected)
+			}
+			if strings.Contains(res.Body.String(), "secret") {
+				t.Fatalf("response body leaked token: %q", res.Body.String())
+			}
+			if tt.wantStatus == http.StatusUnauthorized && res.Header().Get("WWW-Authenticate") != "Bearer" {
+				t.Fatalf("WWW-Authenticate = %q, want Bearer", res.Header().Get("WWW-Authenticate"))
+			}
+		})
+	}
+}
+
+func TestWrapMCPHandlerPreservesBodyLimitWithValidToken(t *testing.T) {
+	h := wrapMCPHandler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		_, err := io.ReadAll(r.Body)
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusRequestEntityTooLarge)
+			return
+		}
+		w.WriteHeader(http.StatusNoContent)
+	}), 8, "secret")
+
+	req := httptest.NewRequest(http.MethodPost, "/mcp", strings.NewReader("0123456789"))
+	req.Header.Set("Authorization", "Bearer secret")
+	res := httptest.NewRecorder()
+	h.ServeHTTP(res, req)
+
+	if res.Code != http.StatusRequestEntityTooLarge {
+		t.Fatalf("status = %d, want %d", res.Code, http.StatusRequestEntityTooLarge)
+	}
+}
+
 func TestRunConfigError(t *testing.T) {
 	originalLoadConfig := loadConfig
 	originalNewRAGService := newRAGService
@@ -174,6 +283,13 @@ func TestNewMuxHealthz(t *testing.T) {
 	mux.ServeHTTP(mcpRes, mcpReq)
 	if mcpRes.Code != http.StatusTeapot {
 		t.Fatalf("mcp status = %d, want %d", mcpRes.Code, http.StatusTeapot)
+	}
+
+	mcpSlashReq := httptest.NewRequest(http.MethodPost, "/mcp/", strings.NewReader("{}"))
+	mcpSlashRes := httptest.NewRecorder()
+	mux.ServeHTTP(mcpSlashRes, mcpSlashReq)
+	if mcpSlashRes.Code != http.StatusTeapot {
+		t.Fatalf("mcp slash status = %d, want %d", mcpSlashRes.Code, http.StatusTeapot)
 	}
 }
 

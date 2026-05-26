@@ -2,6 +2,7 @@ package config
 
 import (
 	"fmt"
+	"net/netip"
 	"os"
 	"path/filepath"
 	"strconv"
@@ -10,7 +11,9 @@ import (
 
 type Config struct {
 	Host             string
+	HTTPPublishHost  string
 	Port             int
+	APIToken         string
 	DocsDir          string
 	CodeDir          string
 	ChromaURL        string
@@ -82,7 +85,9 @@ func Load() (Config, error) {
 
 	cfg := Config{
 		Host:             env("RAG_HTTP_HOST", "127.0.0.1"),
+		HTTPPublishHost:  env("RAG_HTTP_PUBLISH_HOST", ""),
 		Port:             port,
+		APIToken:         env("RAG_API_TOKEN", ""),
 		DocsDir:          docsDir,
 		CodeDir:          codeDir,
 		ChromaURL:        strings.TrimRight(env("RAG_CHROMA_URL", "http://chroma:8000"), "/"),
@@ -98,7 +103,31 @@ func Load() (Config, error) {
 		EnableCodeIngest: enableCodeIngest,
 	}
 
+	if cfg.APIToken == "" && requiresAPIToken(cfg.Host, cfg.HTTPPublishHost) {
+		if cfg.HTTPPublishHost != "" {
+			return Config{}, fmt.Errorf("RAG_API_TOKEN must be set when RAG_HTTP_PUBLISH_HOST is non-loopback")
+		}
+		return Config{}, fmt.Errorf("RAG_API_TOKEN must be set when RAG_HTTP_HOST is non-loopback")
+	}
+
 	return cfg, nil
+}
+
+func requiresAPIToken(host, publishHost string) bool {
+	if strings.TrimSpace(publishHost) != "" {
+		return !isLoopbackHost(publishHost)
+	}
+	return !isLoopbackHost(host)
+}
+
+func isLoopbackHost(host string) bool {
+	normalized := strings.Trim(strings.TrimSpace(host), "[]")
+	if strings.EqualFold(normalized, "localhost") {
+		return true
+	}
+
+	addr, err := netip.ParseAddr(normalized)
+	return err == nil && addr.IsLoopback()
 }
 
 func env(key, fallback string) string {

@@ -9,8 +9,10 @@ Dieses Dokument beschreibt die Security-Ableitung zur ADR-Entscheidung aus `docs
 
 ## Umsetzungsstatus
 
-- Aktuell gilt operational `localhost-only` als freigegebener Modus.
-- `LAN-only` wird erst mit aktiver Token-Absicherung fuer Nicht-Loopback-Zugriffe freigegeben (Umsetzung ueber Vikunja `P1-004`).
+- `localhost-only` bleibt der Default: Docker published den Host-Port auf Loopback.
+- `LAN-only` ist technisch nur mit expliziter Non-Loopback-Publish-Konfiguration und gesetztem `RAG_API_TOKEN` freigegeben.
+- Ist `RAG_API_TOKEN` gesetzt, verlangen `/mcp` und `/mcp/` immer `Authorization: Bearer <token>`.
+- `/healthz` bleibt bewusst public-minimal und gibt keine Diagnose- oder Konfigurationsdetails preis.
 
 ## Bedrohungen (v1)
 
@@ -21,15 +23,16 @@ Dieses Dokument beschreibt die Security-Ableitung zur ADR-Entscheidung aus `docs
 ## Verbindliche Controls
 
 - Netzgrenzen: primaer Docker/Host/Firewall, nur freigegebene Netze im LAN-Opt-in
-- Authentisierung: Token-Pflicht fuer Nicht-Loopback-Zugriffe
+- Authentisierung: Bearer-Token-Pflicht fuer geschuetzte MCP-Pfade im LAN-Opt-in; Non-Loopback-Publish ohne Token ist ungueltige Konfiguration
 - CORS: kein permissiver Default
 - Discovery: keine automatische Service Discovery in v1
 
 ## Test-/Compliance-Checks
 
 - `localhost-default`: mit Default-Config ist Zugriff auf `/mcp` nur lokal erfolgreich.
-- `LAN-opt-in`: nur mit expliziter Non-Loopback-Bind/Publish-Konfiguration und dokumentierter Source-Netzgrenze.
-- `Auth`: Nicht-Loopback-Requests ohne gueltiges Token werden abgewiesen.
+- `LAN-opt-in`: nur mit expliziter Non-Loopback-Publish-Konfiguration, gesetztem `RAG_API_TOKEN` und dokumentierter Source-Netzgrenze.
+- `Auth`: Requests auf `/mcp` oder `/mcp/` ohne gueltiges Bearer-Token werden bei gesetztem Token abgewiesen.
+- `Health`: `/healthz` bleibt ohne Token erreichbar und liefert nur ein minimales Health-Signal.
 - `Out-of-scope`: keine Exposition ueber WAN/oeffentliche Interfaces, kein VPN/Overlay-Zugriff ohne neues Threat Model.
 
 ## Out-of-Scope (v1)

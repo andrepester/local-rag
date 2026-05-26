@@ -162,17 +162,30 @@ make clean-install FULL_RESET=1
 
 - Default mode is `localhost-only`
 - `LAN-only` is explicit opt-in and not enabled by default
+- Docker publishes the MCP host port on `127.0.0.1` by default through `RAG_HTTP_PUBLISH_HOST`
+- Publishing on a non-loopback host interface requires `RAG_API_TOKEN`
+- When `RAG_API_TOKEN` is set, `/mcp` and `/mcp/` require `Authorization: Bearer <token>`
+- `/healthz` remains public and returns only a minimal health response
 - WAN/Internet exposure is out of scope in v1
 - VPN/overlay access is out of scope in v1
 
-Non-loopback access requires additional controls as defined in the ADR and threat model.
+Non-loopback access requires token authentication plus Docker/host/firewall network controls as defined in the ADR and threat model.
+
+LAN opt-in requires an explicit host publish change and a token, for example:
+
+```dotenv
+RAG_HTTP_PUBLISH_HOST=0.0.0.0
+RAG_API_TOKEN=replace-with-a-long-random-token
+```
 
 ### Environment variables
 
 | Variable | Default | Description |
 |---|---|---|
-| `RAG_HTTP_HOST` | `127.0.0.1` | MCP HTTP bind host inside the container |
+| `RAG_HTTP_HOST` | `127.0.0.1` | MCP HTTP bind host; Docker Compose binds inside the container on `0.0.0.0` and controls host exposure through `RAG_HTTP_PUBLISH_HOST` |
+| `RAG_HTTP_PUBLISH_HOST` | `127.0.0.1` | Host interface used by Docker Compose port publishing; non-loopback values require `RAG_API_TOKEN` |
 | `RAG_HTTP_PORT` | `8765` | MCP HTTP port published on the host |
+| `RAG_API_TOKEN` | empty | Bearer token for `/mcp`; optional for localhost-only, required for LAN opt-in |
 | `HOST_DOCS_DIR` | `./data/docs` | Host path mounted as docs source |
 | `HOST_CODE_DIR` | `./data/code` | Host path mounted as code source |
 | `HOST_INDEX_DIR` | `./data/index` | Host path used for Chroma persistence |
@@ -210,6 +223,14 @@ Non-loopback access requires additional controls as defined in the ADR and threa
 The project is intended to be operated through the provided Docker stack and `make` targets.
 
 Local `opencode.json` variants are ignored by Git.
+
+When `RAG_API_TOKEN` is configured, MCP clients must send:
+
+```http
+Authorization: Bearer <token>
+```
+
+Token rotation is operational: update `RAG_API_TOKEN` and restart the `rag-mcp` container.
 
 ## Development
 
